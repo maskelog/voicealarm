@@ -73,7 +73,7 @@ class AlarmPageState extends State<AlarmPage> {
         });
       }
     } catch (e) {
-      print("Error fetching weather data: $e");
+      // print("Error fetching weather data: $e");
       setState(() {
         weatherDescription = "Error fetching weather data";
         temperature = 0.0;
