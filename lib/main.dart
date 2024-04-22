@@ -5,8 +5,8 @@ import 'alarm_info.dart';
 import 'alarm_manager.dart';
 import 'weather_service.dart';
 
-Future main() async {
-  await dotenv.load(fileName: ".env");
+void main() async {
+  await dotenv.load(fileName: '.env');
   runApp(const MyApp());
 }
 
@@ -32,27 +32,70 @@ class AlarmPage extends StatefulWidget {
 class AlarmPageState extends State<AlarmPage> {
   List<AlarmInfo> alarms = [];
   late AlarmManager alarmManager;
+  String weatherDescription = ""; // 날씨 설명을 저장하는 변수
+  double temperature = 0.0; // 온도를 저장하는 변수
+  String locationName = "Your Location"; // 위치 이름 저장
+
+  late WeatherService weatherService; // 날씨 서비스 인스턴스 선언
 
   @override
   void initState() {
     super.initState();
-    alarmManager = AlarmManager(WeatherService());
+    String apiKey = dotenv.env['WEATHER_API_KEY'] ?? ''; // API 키 로드
+    weatherService = WeatherService(apiKey); // WeatherService 인스턴스 생성
+    alarmManager = AlarmManager(weatherService);
+    fetchWeather(); // 날씨 정보 가져오기
+  }
+
+  void fetchWeather() async {
+    try {
+      // 예제 격자 좌표를 사용 (서울 지역 예시)
+      int nx = 60;
+      int ny = 127;
+      var weatherData = await weatherService.getWeatherData(
+          DateFormat('yyyyMMdd').format(DateTime.now()),
+          '0600',
+          nx.toString(),
+          ny.toString());
+
+      if (weatherData != null) {
+        setState(() {
+          weatherDescription =
+              "${weatherData['weather']}, ${weatherData['condition']}";
+          temperature = double.tryParse(weatherData['temp']) ?? 0.0;
+          locationName = "Seoul"; // 예제로 서울 지정
+        });
+      } else {
+        setState(() {
+          weatherDescription = "Weather data not available";
+          temperature = 0.0;
+          locationName = "Unknown Location";
+        });
+      }
+    } catch (e) {
+      print("Error fetching weather data: $e");
+      setState(() {
+        weatherDescription = "Error fetching weather data";
+        temperature = 0.0;
+        locationName = "Unknown Location";
+      });
+    }
   }
 
   void _addOrUpdateAlarm(AlarmInfo alarm) {
     setState(() {
-      int index = alarms.indexWhere((a) => a.time == alarm.time);
+      int index = alarms.indexWhere((a) => a.time.isAtSameMomentAs(alarm.time));
       if (index != -1) {
-        alarms[index] = alarm;
+        alarms[index] = alarm; // 기존 알람 업데이트
       } else {
-        alarms.add(alarm);
+        alarms.add(alarm); // 새 알람 추가
       }
     });
   }
 
   void _deleteAlarm(int index) {
     setState(() {
-      alarms.removeAt(index);
+      alarms.removeAt(index); // 알람 삭제
     });
   }
 
@@ -164,6 +207,8 @@ class AlarmPageState extends State<AlarmPage> {
               style: const TextStyle(fontSize: 80, fontWeight: FontWeight.bold),
             ),
           ),
+          Text(
+              "$locationName: $weatherDescription, Temp: ${temperature.toStringAsFixed(1)}°C"),
           Expanded(
             child: ListView.builder(
               itemCount: alarms.length,

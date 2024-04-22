@@ -1,12 +1,21 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/intl.dart';
 
 class WeatherService {
-  final String serviceKey = dotenv.env['WEATHER_API_KEY'] ?? '';
+  final String serviceKey;
 
-  Future<bool> willItRain(
-      String baseDate, String baseTime, String nx, String ny) async {
+  WeatherService(this.serviceKey);
+
+  // 날씨 데이터를 가져오는 메서드
+  Future<Map<String, String?>> getWeather(DateTime time) async {
+    String formattedDate = DateFormat('yyyyMMdd').format(time);
+    String formattedTime = DateFormat('HHmm').format(time);
+
+    // 시간은 API 요구 사항에 맞게 조정 (예: 0200, 0500, 0800, 등)
+    formattedTime =
+        '${(int.parse(formattedTime.substring(0, 2)) ~/ 3 * 3).toString().padLeft(2, '0')}00';
+
     var url = Uri.parse(
             'http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst')
         .replace(queryParameters: {
@@ -14,33 +23,30 @@ class WeatherService {
       'pageNo': '1',
       'numOfRows': '10',
       'dataType': 'JSON',
-      'base_date': baseDate,
-      'base_time': baseTime,
-      'nx': nx,
-      'ny': ny
+      'base_date': formattedDate,
+      'base_time': formattedTime,
+      'nx': '55', // 예시 격자 X 좌표
+      'ny': '127' // 예시 격자 Y 좌표
     });
 
     var response = await http.get(url);
-
     if (response.statusCode == 200) {
       var data = jsonDecode(response.body);
-      if (data['response']['header']['resultCode'] == "0000") {
-        // API 호출이 성공적인 경우
-        var items = data['response']['body']['items']['item'];
-        return items.any((element) =>
-            element['category'] == 'PTY' &&
-            (element['obsrValue'] == '1' ||
-                element['obsrValue'] == '2' ||
-                element['obsrValue'] == '3')); // PTY=강수형태, 1=비, 2=비/눈, 3=눈
-      } else {
-        throw Exception(
-            'Failed to fetch weather data: ${data['response']['header']['resultMsg']}');
-      }
+      var items = data['response']['body']['items']['item'] as List;
+      Map<String, String?> weatherData = {
+        'rain': items.firstWhere((item) => item['category'] == 'PTY',
+            orElse: () => {'obsrValue': null})['obsrValue'],
+        'temp': items.firstWhere((item) => item['category'] == 'T1H',
+            orElse: () => {'obsrValue': null})['obsrValue'],
+        'snow': items.firstWhere((item) => item['category'] == 'PTY',
+            orElse: () => {'obsrValue': null})['obsrValue'],
+      };
+      return weatherData;
     } else {
       throw Exception(
-          'Failed to connect to the weather service: Status code ${response.statusCode}');
+          'Failed to fetch weather data: HTTP ${response.statusCode}');
     }
   }
 
-  getWeather(DateTime time) {}
+  getWeatherData(String s, String t, String string, String string2) {}
 }

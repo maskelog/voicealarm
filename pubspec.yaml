@@ -63,6 +63,7 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - .env
     - lib/assets/sounds/sca_kr024_v01_w009_wv1.ogg
     # 비오는 날
     - lib/assets/sounds/sca_kr024_v01_w001_wv1.ogg
