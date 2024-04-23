@@ -13,7 +13,7 @@ class AlarmManager {
 
     try {
       var weatherData = await weatherService.getWeather(alarm.time);
-      alarm.sound = determineSound(weatherData);
+      alarm.sound = determineSound(weatherData as Map<String, String?>);
       await playSound(alarm.sound);
     } catch (e) {
       // print('Error checking alarm: $e');

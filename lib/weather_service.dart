@@ -1,18 +1,17 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class WeatherService {
   final String serviceKey;
 
-  WeatherService(this.serviceKey);
+  WeatherService(String apiKey)
+      : serviceKey = dotenv.env['WEATHER_API_KEY'] ?? '';
 
-  // 날씨 데이터를 가져오는 메서드
-  Future<Map<String, String?>> getWeather(DateTime time) async {
+  Future<String> getWeather(DateTime time) async {
     String formattedDate = DateFormat('yyyyMMdd').format(time);
     String formattedTime = DateFormat('HHmm').format(time);
-
-    // 시간은 API 요구 사항에 맞게 조정 (예: 0200, 0500, 0800, 등)
     formattedTime =
         '${(int.parse(formattedTime.substring(0, 2)) ~/ 3 * 3).toString().padLeft(2, '0')}00';
 
@@ -21,7 +20,7 @@ class WeatherService {
         .replace(queryParameters: {
       'serviceKey': serviceKey,
       'pageNo': '1',
-      'numOfRows': '10',
+      'numOfRows': '100', // 예측 데이터 수를 충분히 가져옴
       'dataType': 'JSON',
       'base_date': formattedDate,
       'base_time': formattedTime,
@@ -33,20 +32,78 @@ class WeatherService {
     if (response.statusCode == 200) {
       var data = jsonDecode(response.body);
       var items = data['response']['body']['items']['item'] as List;
-      Map<String, String?> weatherData = {
-        'rain': items.firstWhere((item) => item['category'] == 'PTY',
-            orElse: () => {'obsrValue': null})['obsrValue'],
-        'temp': items.firstWhere((item) => item['category'] == 'T1H',
-            orElse: () => {'obsrValue': null})['obsrValue'],
-        'snow': items.firstWhere((item) => item['category'] == 'PTY',
-            orElse: () => {'obsrValue': null})['obsrValue'],
-      };
-      return weatherData;
+      return processWeatherData(items);
     } else {
       throw Exception(
           'Failed to fetch weather data: HTTP ${response.statusCode}');
     }
   }
 
-  getWeatherData(String s, String t, String string, String string2) {}
+  String processWeatherData(List<dynamic> items) {
+    Map<String, Map<String, dynamic>> weatherInfo = {};
+    for (var item in items) {
+      String timeKey = item['fcstDate'] + item['fcstTime'];
+      if (!weatherInfo.containsKey(timeKey)) {
+        weatherInfo[timeKey] = {};
+      }
+      weatherInfo[timeKey]?[item['category']] = item['fcstValue'];
+    }
+
+    return formatWeatherData(weatherInfo);
+  }
+
+  String formatWeatherData(Map<String, Map<String, dynamic>> weatherData) {
+    var result = StringBuffer();
+    weatherData.forEach((time, data) {
+      var dateTime = DateTime.parse(time);
+      var formattedTime = DateFormat('yyyy년 MM월 dd일 HH시 mm분').format(dateTime);
+      var sky = data['SKY'] != null ? skyCode[data['SKY']] : "데이터 없음";
+      var pty = data['PTY'] != null ? ptyCode[data['PTY']] : "강수 없음";
+      var temp = data['T1H']?.toString() ?? "데이터 없음";
+      var windDir = data['VEC'] != null ? degToDir(data['VEC']) : "데이터 없음";
+      var windSpeed = data['WSD']?.toString() ?? "데이터 없음";
+      result.writeln(
+          '$formattedTime: 하늘 상태: $sky, 강수 형태: $pty, 기온: $temp°C, 풍향: $windDir, 풍속: $windSpeed m/s');
+    });
+    return result.toString();
+  }
+
+  Map<int, String> skyCode = {1: '맑음', 3: '구름 많음', 4: '흐림'};
+  Map<int, String> ptyCode = {
+    0: '강수 없음',
+    1: '비',
+    2: '비/눈',
+    3: '눈',
+    5: '빗방울',
+    6: '진눈깨비',
+    7: '눈날림'
+  };
+
+  String degToDir(double deg) {
+    Map<double, String> degCode = {
+      0: 'N',
+      360: 'N',
+      180: 'S',
+      270: 'W',
+      90: 'E',
+      22.5: 'NNE',
+      45: 'NE',
+      67.5: 'ENE',
+      112.5: 'ESE',
+      135: 'SE',
+      157.5: 'SSE',
+      202.5: 'SSW',
+      225: 'SW',
+      247.5: 'WSW',
+      292.5: 'WNW',
+      315: 'NW',
+      337.5: 'NNW'
+    };
+    return degCode.entries
+        .reduce((a, b) => (deg - a.key).abs() < (deg - b.key).abs() ? a : b)
+        .value;
+  }
+
+  getWeatherData(String formattedDate, String formattedTime, String string,
+      String string2) {}
 }

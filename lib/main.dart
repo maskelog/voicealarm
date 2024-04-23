@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'alarm_info.dart';
 import 'alarm_manager.dart';
 import 'weather_service.dart';
 
-void main() async {
+Future<void> main() async {
   await dotenv.load(fileName: '.env');
   runApp(const MyApp());
 }
@@ -41,45 +42,65 @@ class AlarmPageState extends State<AlarmPage> {
   @override
   void initState() {
     super.initState();
+    initializeWeatherService();
+  }
+
+  void initializeWeatherService() async {
     String apiKey = dotenv.env['WEATHER_API_KEY'] ?? ''; // API 키 로드
     weatherService = WeatherService(apiKey); // WeatherService 인스턴스 생성
     alarmManager = AlarmManager(weatherService);
-    fetchWeather(); // 날씨 정보 가져오기
+    await fetchWeather(); // 날씨 정보 가져오기
   }
 
-  void fetchWeather() async {
+  Future<void> fetchWeather() async {
     try {
-      // 예제 격자 좌표를 사용 (서울 지역 예시)
-      int nx = 60;
-      int ny = 127;
-      var weatherData = await weatherService.getWeatherData(
-          DateFormat('yyyyMMdd').format(DateTime.now()),
-          '0600',
-          nx.toString(),
-          ny.toString());
+      Position position = await _determinePosition();
+      String formattedDate = DateFormat('yyyyMMdd').format(DateTime.now());
+      String formattedTime = '0600';
 
-      if (weatherData != null) {
-        setState(() {
-          weatherDescription =
-              "${weatherData['weather']}, ${weatherData['condition']}";
-          temperature = double.tryParse(weatherData['temp']) ?? 0.0;
-          locationName = "Seoul"; // 예제로 서울 지정
-        });
-      } else {
-        setState(() {
-          weatherDescription = "Weather data not available";
-          temperature = 0.0;
-          locationName = "Unknown Location";
-        });
-      }
-    } catch (e) {
-      // print("Error fetching weather data: $e");
+      var weatherData = await weatherService.getWeatherData(
+          formattedDate,
+          formattedTime,
+          position.latitude.toString(),
+          position.longitude.toString());
+
       setState(() {
-        weatherDescription = "Error fetching weather data";
+        weatherDescription =
+            "${weatherData['weather']}, ${weatherData['condition']}";
+        temperature = double.tryParse(weatherData['temp']) ?? 0.0;
+        locationName = "Current Location";
+      });
+    } catch (e) {
+      setState(() {
+        weatherDescription = "Error fetching weather data: $e";
         temperature = 0.0;
         locationName = "Unknown Location";
       });
     }
+  }
+
+  Future<Position> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error('Location permissions are permanently denied');
+    }
+
+    return await Geolocator.getCurrentPosition();
   }
 
   void _addOrUpdateAlarm(AlarmInfo alarm) {
