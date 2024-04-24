@@ -46,8 +46,7 @@ class AlarmPageState extends State<AlarmPage> {
   }
 
   void initializeWeatherService() async {
-    String apiKey = dotenv.env['WEATHER_API_KEY'] ?? ''; // API 키 로드
-    weatherService = WeatherService(apiKey); // WeatherService 인스턴스 생성
+    weatherService = WeatherService(); // WeatherService 인스턴스 생성
     alarmManager = AlarmManager(weatherService);
     await fetchWeather(); // 날씨 정보 가져오기
   }
@@ -64,12 +63,16 @@ class AlarmPageState extends State<AlarmPage> {
           position.latitude.toString(),
           position.longitude.toString());
 
-      setState(() {
-        weatherDescription =
-            "${weatherData['weather']}, ${weatherData['condition']}";
-        temperature = double.tryParse(weatherData['temp']) ?? 0.0;
-        locationName = "Current Location";
-      });
+      if (weatherData != null && weatherData.isNotEmpty) {
+        setState(() {
+          weatherDescription =
+              "${weatherData['weather'] ?? 'No weather data'}, ${weatherData['condition'] ?? 'No condition data'}";
+          temperature = double.tryParse(weatherData['temp'] ?? '0') ?? 0.0;
+          locationName = "Current Location";
+        });
+      } else {
+        throw Exception('No weather data available');
+      }
     } catch (e) {
       setState(() {
         weatherDescription = "Error fetching weather data: $e";

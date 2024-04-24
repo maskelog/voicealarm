@@ -13,11 +13,10 @@ class AlarmManager {
 
     try {
       var weatherData = await weatherService.getWeather(alarm.time);
-      alarm.sound = determineSound(weatherData as Map<String, String?>);
+      alarm.sound = determineSound(weatherData);
       await playSound(alarm.sound);
     } catch (e) {
-      // print('Error checking alarm: $e');
-      // Optionally set a default sound if weather data fetch fails.
+      print('Error checking alarm: $e');
       await playSound('default_sound.mp3');
     }
   }
@@ -28,23 +27,23 @@ class AlarmManager {
     final tempString = weatherData['temp'];
 
     if (rain == '1') {
-      return 'sca_kr024_v01_w009_wv1.ogg'; // 비 오는 날의 사운드 파일
+      return 'sca_kr024_v01_w009_wv1.ogg'; // Rainy day sound file
     } else if (snow == '1') {
-      return 'sca_kr024_v01_w001_wv1.ogg'; // 눈 오는 날
+      return 'sca_kr024_v01_w001_wv1.ogg'; // Snowy day
     } else {
       double temp = double.tryParse(tempString ?? '0') ?? 0.0;
       if (temp < 0) {
-        return 'sca_kr024_v01_w002_wv1.ogg'; // 추운 날
+        return 'sca_kr024_v01_w002_wv1.ogg'; // Cold day
       }
     }
-    return 'sca_kr024_v01_w014_wv1.ogg'; // 일반적인 날씨
+    return 'sca_kr024_v01_w014_wv1.ogg'; // Default weather
   }
 
   Future<void> playSound(String soundFileName) async {
     try {
       await audioPlayer.play(AssetSource('lib/assets/sounds/$soundFileName'));
     } catch (e) {
-      // print('Error playing sound: $e');
+      print('Error playing sound: $e');
     }
   }
 }
