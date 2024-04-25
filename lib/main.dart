@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_voice_alarm/geolocation.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -53,21 +55,26 @@ class AlarmPageState extends State<AlarmPage> {
 
   Future<void> fetchWeather() async {
     try {
-      Position position = await _determinePosition();
-      String formattedDate = DateFormat('yyyyMMdd').format(DateTime.now());
-      String formattedTime = '0600';
+      await _determinePosition();
 
-      var weatherData = await weatherService.getWeatherData(
-          formattedDate,
-          formattedTime,
-          position.latitude.toString(),
-          position.longitude.toString());
+      // formattedDate와 formattedTime 변수 사용하지 않음
+      // String formattedDate = DateFormat('yyyyMMdd').format(DateTime.now());
+      // String formattedTime = '0600';
 
-      if (weatherData != null && weatherData.isNotEmpty) {
+      // getWeather 호출 시 필요한 모든 인자 전달
+      var weatherData = await weatherService.getWeather(
+          DateTime.now(), 0, 0); // 예시로 0 전달, 실제로 사용할 값으로 대체 필요
+
+      if (weatherData.isNotEmpty) {
+        // API 응답 내용 디버깅을 위한 출력
+        if (kDebugMode) {
+          print('Weather API Response: $weatherData');
+        }
+
         setState(() {
           weatherDescription =
-              "${weatherData['weather'] ?? 'No weather data'}, ${weatherData['condition'] ?? 'No condition data'}";
-          temperature = double.tryParse(weatherData['temp'] ?? '0') ?? 0.0;
+              "${weatherData['PTY'] ?? 'No weather data'}, ${weatherData['SKY'] ?? 'No condition data'}";
+          temperature = double.tryParse(weatherData['T3H'] ?? '0') ?? 0.0;
           locationName = "Current Location";
         });
       } else {
@@ -79,6 +86,41 @@ class AlarmPageState extends State<AlarmPage> {
         temperature = 0.0;
         locationName = "Unknown Location";
       });
+    }
+  }
+
+  Future<List<double>> getNxNyValues() async {
+    try {
+      // 위치 권한 확인
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          // 위치 권한이 거부된 경우 처리
+          throw Exception('위치 정보 권한이 거부되었습니다.');
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        // 위치 권한이 영구적으로 거부된 경우 처리
+        throw Exception('위치 정보 권한이 영구적으로 거부되었습니다.');
+      }
+
+      // 현재 위치 가져오기
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+
+      // 현재 위치(위도, 경도)를 기상청 API 격자 좌표로 변환
+      WeatherMapXY mapXY =
+          changeLatLngToMap(position.longitude, position.latitude);
+
+      return [mapXY.x.toDouble(), mapXY.y.toDouble()];
+    } catch (e) {
+      // 위치 정보 가져오기 실패 시 에러 처리
+      if (kDebugMode) {
+        print('Error getting location coordinates: $e');
+      }
+      throw Exception('위치 정보를 가져오는 데 실패했습니다.');
     }
   }
 
@@ -123,7 +165,7 @@ class AlarmPageState extends State<AlarmPage> {
     });
   }
 
-  void _showAddAlarmDialog({AlarmInfo? initialAlarm}) {
+  void _showAddAlarmDialog({AlarmInfo? initialAlarm}) async {
     TextEditingController nameController =
         TextEditingController(text: initialAlarm?.name ?? '');
     Map<String, bool> repeatDays = initialAlarm?.repeatDays ??
@@ -141,6 +183,30 @@ class AlarmPageState extends State<AlarmPage> {
             hour: initialAlarm.time.hour, minute: initialAlarm.time.minute)
         : TimeOfDay.now();
 
+    List<double> nxNyValues;
+
+    try {
+      nxNyValues = await getNxNyValues();
+    } catch (e) {
+      // 위치 정보를 가져오는 데 실패한 경우 에러 메시지 출력 후 함수 종료
+      if (kDebugMode) {
+        print('Error getting nx and ny values: $e');
+      }
+      return;
+    }
+
+    // ignore: use_build_context_synchronously
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: selectedTime,
+    );
+    if (pickedTime != null && pickedTime != selectedTime) {
+      setState(() {
+        selectedTime = pickedTime;
+      });
+    }
+
+    // ignore: use_build_context_synchronously
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -206,6 +272,8 @@ class AlarmPageState extends State<AlarmPage> {
                   ),
                   repeatDays: repeatDays,
                   isEnabled: initialAlarm?.isEnabled ?? true,
+                  nx: nxNyValues[0].toInt(),
+                  ny: nxNyValues[1].toInt(),
                 ));
               },
             ),

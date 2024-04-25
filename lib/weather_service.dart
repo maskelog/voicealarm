@@ -8,10 +8,9 @@ class WeatherService {
 
   WeatherService() : serviceKey = dotenv.env['WEATHER_API_KEY'] ?? '';
 
-  Future<Map<String, String?>> getWeather(DateTime time) async {
+  Future<Map<String, String?>> getWeather(DateTime time, int nx, int ny) async {
     String formattedDate = DateFormat('yyyyMMdd').format(time);
-    String formattedTime =
-        '${DateFormat('HHmm').format(time).substring(0, 2)}00';
+    String formattedTime = DateFormat('HH00').format(time);
 
     var url = Uri.parse(
             'http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst')
@@ -22,8 +21,8 @@ class WeatherService {
       'dataType': 'JSON',
       'base_date': formattedDate,
       'base_time': formattedTime,
-      'nx': '55', // Example coordinates
-      'ny': '127',
+      'nx': nx.toString(),
+      'ny': ny.toString(),
     });
 
     var response = await http.get(url);
@@ -40,11 +39,8 @@ class WeatherService {
   Map<String, String?> _processWeatherData(List<dynamic> items) {
     var resultMap = <String, String?>{};
     for (var item in items) {
-      resultMap[item['category']] = item['fcstValue'].toString();
+      resultMap[item['category']] = item['obsrValue'].toString();
     }
     return resultMap;
   }
-
-  getWeatherData(String formattedDate, String formattedTime, String string,
-      String string2) {}
 }

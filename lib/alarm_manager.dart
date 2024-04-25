@@ -1,4 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_voice_alarm/alarm_info.dart';
 import 'package:flutter_voice_alarm/weather_service.dart';
 
@@ -12,38 +13,40 @@ class AlarmManager {
     if (!alarm.isEnabled) return;
 
     try {
-      var weatherData = await weatherService.getWeather(alarm.time);
+      var weatherData =
+          await weatherService.getWeather(alarm.time, alarm.nx, alarm.ny);
       alarm.sound = determineSound(weatherData);
       await playSound(alarm.sound);
     } catch (e) {
-      print('Error checking alarm: $e');
+      // Print any errors that occur while checking the alarm
+      if (kDebugMode) {
+        print('Error checking alarm: $e');
+      }
       await playSound('default_sound.mp3');
     }
   }
 
   String determineSound(Map<String, String?> weatherData) {
-    final rain = weatherData['rain'];
-    final snow = weatherData['snow'];
-    final tempString = weatherData['temp'];
+    final rain = weatherData['RN1'];
+    final snow = weatherData['T1H'];
 
-    if (rain == '1') {
+    if (rain != null && double.tryParse(rain)! > 0) {
       return 'sca_kr024_v01_w009_wv1.ogg'; // Rainy day sound file
-    } else if (snow == '1') {
+    } else if (snow != null && double.tryParse(snow)! < 0) {
       return 'sca_kr024_v01_w001_wv1.ogg'; // Snowy day
     } else {
-      double temp = double.tryParse(tempString ?? '0') ?? 0.0;
-      if (temp < 0) {
-        return 'sca_kr024_v01_w002_wv1.ogg'; // Cold day
-      }
+      return 'sca_kr024_v01_w014_wv1.ogg'; // Default weather
     }
-    return 'sca_kr024_v01_w014_wv1.ogg'; // Default weather
   }
 
   Future<void> playSound(String soundFileName) async {
     try {
-      await audioPlayer.play(AssetSource('lib/assets/sounds/$soundFileName'));
+      await audioPlayer.play('lib/assets/sounds/$soundFileName' as Source);
     } catch (e) {
-      print('Error playing sound: $e');
+      // Print any errors that occur while playing the sound
+      if (kDebugMode) {
+        print('Error playing sound: $e');
+      }
     }
   }
 }
