@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:geolocator/geolocator.dart';
 
 class WeatherMapXY {
   final int x;
@@ -28,19 +29,20 @@ class LamcParameter {
   });
 }
 
+// 위도와 경도를 격자 좌표로 변환
 WeatherMapXY changeLatLngToMap(double longitude, double latitude) {
   const double piValue = pi;
   const double degRad = piValue / 180.0;
 
   LamcParameter map = LamcParameter(
-    re: 6371.00877,
-    grid: 5.0,
-    slat1: 30.0,
-    slat2: 60.0,
-    olon: 126.0,
-    olat: 38.0,
-    xo: 210 / 5.0,
-    yo: 675 / 5.0,
+    re: 6371.00877, // 지구 반경
+    grid: 5.0, // 격자 간격
+    slat1: 30.0, // 표준 위도 1
+    slat2: 60.0, // 표준 위도 2
+    olon: 126.0, // 기준점 경도
+    olat: 38.0, // 기준점 위도
+    xo: 210 / 5.0, // 기준점 X 좌표
+    yo: 675 / 5.0, // 기준점 Y 좌표
   );
 
   double re = map.re / map.grid;
@@ -69,4 +71,31 @@ WeatherMapXY changeLatLngToMap(double longitude, double latitude) {
   x = x + 1.5;
   y = y + 1.5;
   return WeatherMapXY(x.toInt(), y.toInt());
+}
+
+// 실시간 위치 가져오기 및 격자 좌표 변환
+Future<WeatherMapXY> getCurrentLocationAndConvert() async {
+  // 사용자의 현재 위치 권한 상태를 확인
+  LocationPermission permission = await Geolocator.checkPermission();
+  if (permission == LocationPermission.denied) {
+    permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied) {
+      // 권한 거부됨
+      throw Exception('위치 정보 권한이 거부되었습니다.');
+    }
+  }
+
+  if (permission == LocationPermission.deniedForever) {
+    // 권한이 영구적으로 거부됨
+    throw Exception('위치 정보 권한이 영구적으로 거부되었습니다.');
+  }
+
+  // 현재 위치를 가져옴
+  Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high);
+
+  // 현재 위치(위도, 경도)를 기상청 API 격자 좌표로 변환
+  WeatherMapXY mapXY = changeLatLngToMap(position.longitude, position.latitude);
+
+  return mapXY;
 }
