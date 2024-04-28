@@ -1,46 +1,29 @@
-import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class WeatherService {
-  final String serviceKey;
+  final String baseUrl =
+      "https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst";
+  final String apiKey = "WaioH0gCRdioqB9IAmXYkg";
 
-  WeatherService() : serviceKey = dotenv.env['WEATHER_API_KEY'] ?? '';
+  Future<Map<String, dynamic>> fetchWeather(
+      int nx, int ny, String baseDate, String baseTime) async {
+    final response = await http.get(
+      Uri.parse(
+          "$baseUrl?pageNo=1&numOfRows=100&dataType=JSON&base_date=$baseDate&base_time=$baseTime&nx=$nx&ny=$ny&authKey=$apiKey"),
+    );
 
-  Future<Map<String, String?>> getWeather(DateTime time, int nx, int ny) async {
-    String formattedDate = DateFormat('yyyyMMdd').format(time);
-    String formattedTime = DateFormat('HH00').format(time);
-
-    var url = Uri.parse(
-            'http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst')
-        .replace(queryParameters: {
-      'serviceKey': serviceKey,
-      'pageNo': '1',
-      'numOfRows': '10',
-      'dataType': 'JSON',
-      'base_date': formattedDate,
-      'base_time': formattedTime,
-      'nx': nx.toString(),
-      'ny': ny.toString(),
-    });
-
-    var response = await http.get(url);
     if (response.statusCode == 200) {
-      var data = jsonDecode(response.body);
-      var items = data['response']['body']['items']['item'] as List<dynamic>;
-      return _processWeatherData(items);
-    } else {
-      throw Exception(
-          'Failed to fetch weather data with status code: ${response.statusCode}');
-    }
-  }
+      final data = json.decode(response.body);
 
-  Map<String, String?> _processWeatherData(List<dynamic> items) {
-    var resultMap = <String, String?>{};
-    for (var item in items) {
-      resultMap[item['category']] = item['obsrValue'].toString();
+      // API 응답에서 필요한 데이터만 추출
+      if (data['response']['header']['resultCode'] == '00') {
+        return data['response']['body']['items'];
+      } else {
+        throw Exception('Failed to load weather data');
+      }
+    } else {
+      throw Exception('Failed to connect to the Weather API');
     }
-    return resultMap;
   }
 }
