@@ -65,6 +65,28 @@ class WeatherScreenState extends State<WeatherScreen> {
     }
   }
 
+  _showDatePicker() async {
+    final DateTime? selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2021),
+      lastDate: DateTime(2022),
+    );
+    if (selectedDate != null) {
+      // Do something with the selected date
+    }
+  }
+
+  _showTimePicker() async {
+    final TimeOfDay? selectedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (selectedTime != null) {
+      // Do something with the selected time
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,11 +96,19 @@ class WeatherScreenState extends State<WeatherScreen> {
       body: _weatherDataMessage.isNotEmpty
           ? Center(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: <Widget>[
                   const CircularProgressIndicator(),
                   const SizedBox(height: 20),
                   Text(_weatherDataMessage),
+                  ElevatedButton(
+                    onPressed: _showDatePicker,
+                    child: const Text('날짜 선택'),
+                  ),
+                  ElevatedButton(
+                    onPressed: _showTimePicker,
+                    child: const Text('시간 선택'),
+                  ),
                 ],
               ),
             )
@@ -120,7 +150,7 @@ class WeatherScreenState extends State<WeatherScreen> {
                       if (_weatherData[index]['category'] == 'VEC')
                         Text('풍향: ${_weatherData[index]['fcstValue']}'),
                       if (_weatherData[index]['category'] == 'WSD')
-                        Text('풍속: ${_weatherData[index]['fcstValue']}'),
+                        Text('풍속: ${_weatherData[index]['fcstValue']}m/s'),
                       if (_weatherData[index]['category'] == 'SKY')
                         Text('하늘상태: $skyStatus'),
                       if (_weatherData[index]['category'] == 'PTY')
