@@ -47,11 +47,21 @@ class WeatherScreenState extends State<WeatherScreen> {
     try {
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
+      var now = DateTime.now();
+      var roundedHour = (now.hour ~/ 3) * 3; // 가장 가까운 3시간 간격으로 시간을 반올림
+
+      // 현재 시간이 05시 이전이면 전날의 23시 데이터를 가져옴
+      if (roundedHour < 5) {
+        now = now.subtract(const Duration(days: 1));
+        roundedHour = 23;
+      }
+
+      var roundedTime = TimeOfDay(hour: roundedHour, minute: 0);
       var weatherData = await _weatherService.fetchWeather(
         position.latitude.toInt(),
         position.longitude.toInt(),
-        formatDate(DateTime.now()),
-        formatTime(TimeOfDay.now()),
+        formatDate(now),
+        formatTime(roundedTime),
       );
       setState(() {
         _weatherData = List<Map<String, dynamic>>.from(
@@ -70,7 +80,7 @@ class WeatherScreenState extends State<WeatherScreen> {
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2021),
-      lastDate: DateTime(2022),
+      lastDate: DateTime(2030),
     );
     if (selectedDate != null) {
       // Do something with the selected date
@@ -89,6 +99,15 @@ class WeatherScreenState extends State<WeatherScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 날씨 데이터를 시간별로 그룹화
+    var groupedWeatherData = <String, List<Map<String, dynamic>>>{};
+    for (var item in _weatherData) {
+      if (!groupedWeatherData.containsKey(item['baseTime'])) {
+        groupedWeatherData[item['baseTime']] = [];
+      }
+      groupedWeatherData[item['baseTime']]?.add(item);
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('날씨 정보'),
@@ -156,7 +175,7 @@ class WeatherScreenState extends State<WeatherScreen> {
                       if (_weatherData[index]['category'] == 'PTY')
                         Text('강수형태: ${_weatherData[index]['fcstValue']}'),
                       if (_weatherData[index]['category'] == 'POP')
-                        Text('강수유무: ${_weatherData[index]['fcstValue']}'),
+                        Text('강수유무: ${_weatherData[index]['fcstValue']}%'),
                       if (_weatherData[index]['category'] == 'PCP')
                         Text('1시간 강수량: ${_weatherData[index]['fcstValue']}'),
                     ],
