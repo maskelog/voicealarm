@@ -31,11 +31,10 @@ class WeatherService {
   }
 
   Future<List<Map<String, dynamic>>> fetchWeatherData(
-      TimeOfDay selectedTime) async {
+      TimeOfDay selectedTime, DateTime selectedDate) async {
     try {
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
-      var now = DateTime.now();
       var availableHours = [5, 8, 11, 14, 17, 20, 23];
       var currentHour = selectedTime.hour;
 
@@ -45,7 +44,7 @@ class WeatherService {
 
       // 선택한 시간이 05시 이전이면 전날의 23시 데이터를 가져옴
       if (closestHour < 5) {
-        now = now.subtract(const Duration(days: 1));
+        selectedDate = selectedDate.subtract(const Duration(days: 1));
         closestHour = 23;
       }
 
@@ -53,14 +52,17 @@ class WeatherService {
       var weatherData = await fetchWeather(
         position.latitude.toInt(),
         position.longitude.toInt(),
-        formatDate(now),
+        formatDate(selectedDate),
         formatTime(closestTime),
       );
+
+      print('Weather data: $weatherData'); // JSON 데이터 출력
 
       return List<Map<String, dynamic>>.from(
           weatherData.values.expand((item) => item).toList());
     } catch (e) {
-      throw Exception("날씨 정보를 불러오는데 실패했습니다: $e");
+      print('Detailed error: ${e.toString()}'); // 자세한 오류 출력
+      return []; // 예외가 발생하면 빈 리스트를 반환
     }
   }
 

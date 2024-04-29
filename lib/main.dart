@@ -24,7 +24,7 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class WeatherScreenState extends State<WeatherScreen> {
-  final WeatherService weatherService = WeatherService();
+  WeatherService weatherService = WeatherService();
   List<Map<String, dynamic>> weatherData = [];
   String weatherDataMessage = "날씨 정보를 불러오는 중...";
 
@@ -36,7 +36,8 @@ class WeatherScreenState extends State<WeatherScreen> {
 
   fetchWeather() async {
     try {
-      weatherData = await weatherService.fetchWeatherData(_selectedTime);
+      weatherData =
+          await weatherService.fetchWeatherData(_selectedTime, _selectedDate);
       setState(() {
         weatherDataMessage = "";
       });
@@ -48,12 +49,14 @@ class WeatherScreenState extends State<WeatherScreen> {
   }
 
   TimeOfDay _selectedTime = TimeOfDay.now();
-  List<Map<String, dynamic>> _selectedWeatherData = [];
+  DateTime _selectedDate = DateTime.now();
+  final List<Map<String, dynamic>> _selectedWeatherData = [];
 
   Future<void> _selectTime(BuildContext context) async {
+    const TimeOfDay initialTime = TimeOfDay(hour: 5, minute: 0);
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: _selectedTime,
+      initialTime: initialTime,
       builder: (BuildContext context, Widget? child) {
         return Directionality(
           textDirection: TextDirection.ltr,
@@ -63,16 +66,36 @@ class WeatherScreenState extends State<WeatherScreen> {
     );
     if (picked != null && picked != _selectedTime) {
       setState(() {
-        _selectedTime = picked;
+        if (picked.hour < 5) {
+          _selectedTime = const TimeOfDay(hour: 23, minute: 0);
+          _selectedDate = _selectedDate.subtract(const Duration(days: 1));
+        } else {
+          _selectedTime = picked;
+        }
       });
-      try {
-        _selectedWeatherData =
-            await weatherService.fetchWeatherData(_selectedTime);
-        fetchWeather();
-      } catch (e) {
-        print("날씨 정보를 불러오는데 실패했습니다: $e");
-      }
     }
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020, 1),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != _selectedDate) {
+      _selectedDate = picked;
+      await updateWeatherData();
+    }
+  }
+
+  Future<void> updateWeatherData() async {
+    var data =
+        await weatherService.fetchWeatherData(_selectedTime, _selectedDate);
+    setState(() {
+      _selectedWeatherData.clear();
+      _selectedWeatherData.addAll(data);
+    });
   }
 
   @override
@@ -110,6 +133,17 @@ class WeatherScreenState extends State<WeatherScreen> {
                 'Selected time: ${_selectedTime.format(context)}',
               ),
               ElevatedButton(
+                onPressed: () async {
+                  await _selectDate(context);
+                  var data = await weatherService.fetchWeatherData(
+                      _selectedTime, _selectedDate);
+                  setState(() {
+                    weatherData = data;
+                  });
+                },
+                child: const Text('Select date'),
+              ),
+              ElevatedButton(
                 onPressed: () => _selectTime(context),
                 child: const Text('Select time'),
               ),
@@ -136,34 +170,38 @@ class WeatherScreenState extends State<WeatherScreen> {
                       break;
                   }
                 }
-                return ListTile(
-                  title: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text('시간: ${weatherData[index]['baseTime']}'),
-                      if (weatherData[index]['category'] == 'TMP')
-                        Text('온도: ${weatherData[index]['fcstValue']}℃'),
-                      if (weatherData[index]['category'] == 'TMX')
-                        Text('최고기온: ${weatherData[index]['fcstValue']}℃'),
-                      if (weatherData[index]['category'] == 'TMN')
-                        Text('최저기온: ${weatherData[index]['fcstValue']}℃'),
-                      if (weatherData[index]['category'] == 'UUU')
-                        Text('동서바람성분: ${weatherData[index]['fcstValue']}'),
-                      if (weatherData[index]['category'] == 'VVV')
-                        Text('남북바람성분: ${weatherData[index]['fcstValue']}'),
-                      if (weatherData[index]['category'] == 'VEC')
-                        Text('풍향: ${weatherData[index]['fcstValue']}'),
-                      if (weatherData[index]['category'] == 'WSD')
-                        Text('풍속: ${weatherData[index]['fcstValue']}m/s'),
-                      if (weatherData[index]['category'] == 'SKY')
-                        Text('하늘상태: $skyStatus'),
-                      if (weatherData[index]['category'] == 'PTY')
-                        Text('강수형태: ${weatherData[index]['fcstValue']}'),
-                      if (weatherData[index]['category'] == 'POP')
-                        Text('강수유무: ${weatherData[index]['fcstValue']}%'),
-                      if (weatherData[index]['category'] == 'PCP')
-                        Text('1시간 강수량: ${weatherData[index]['fcstValue']}'),
-                    ],
+                return Card(
+                  child: ListTile(
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        if (weatherData.isNotEmpty) ...[
+                          Text('시간: ${weatherData[index]['baseTime']}'),
+                          if (weatherData[index]['category'] == 'TMP')
+                            Text('온도: ${weatherData[index]['fcstValue']}℃'),
+                          if (weatherData[index]['category'] == 'TMX')
+                            Text('최고기온: ${weatherData[index]['fcstValue']}℃'),
+                          if (weatherData[index]['category'] == 'TMN')
+                            Text('최저기온: ${weatherData[index]['fcstValue']}℃'),
+                          if (weatherData[index]['category'] == 'UUU')
+                            Text('동서바람성분: ${weatherData[index]['fcstValue']}'),
+                          if (weatherData[index]['category'] == 'VVV')
+                            Text('남북바람성분: ${weatherData[index]['fcstValue']}'),
+                          if (weatherData[index]['category'] == 'VEC')
+                            Text('풍향: ${weatherData[index]['fcstValue']}'),
+                          if (weatherData[index]['category'] == 'WSD')
+                            Text('풍속: ${weatherData[index]['fcstValue']}m/s'),
+                          if (weatherData[index]['category'] == 'SKY')
+                            Text('하늘상태: $skyStatus'),
+                          if (weatherData[index]['category'] == 'PTY')
+                            Text('강수형태: ${weatherData[index]['fcstValue']}'),
+                          if (weatherData[index]['category'] == 'POP')
+                            Text('강수유무: ${weatherData[index]['fcstValue']}%'),
+                          if (weatherData[index]['category'] == 'PCP')
+                            Text('1시간 강수량: ${weatherData[index]['fcstValue']}'),
+                        ],
+                      ],
+                    ),
                   ),
                 );
               },
