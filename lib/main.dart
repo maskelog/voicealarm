@@ -48,21 +48,27 @@ class WeatherScreenState extends State<WeatherScreen> {
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
       var now = DateTime.now();
-      var roundedHour = (now.hour ~/ 3) * 3; // 가장 가까운 3시간 간격으로 시간을 반올림
+      var availableHours = [5, 8, 11, 14, 17, 20, 23];
+      var currentHour = now.hour;
+
+      // 현재 시간에 가장 가까운 가능한 시간을 찾음
+      var closestHour = availableHours.reduce(
+          (a, b) => (b - currentHour).abs() < (a - currentHour).abs() ? b : a);
 
       // 현재 시간이 05시 이전이면 전날의 23시 데이터를 가져옴
-      if (roundedHour < 5) {
+      if (closestHour < 5) {
         now = now.subtract(const Duration(days: 1));
-        roundedHour = 23;
+        closestHour = 23;
       }
 
-      var roundedTime = TimeOfDay(hour: roundedHour, minute: 0);
+      var closestTime = TimeOfDay(hour: closestHour, minute: 0);
       var weatherData = await _weatherService.fetchWeather(
         position.latitude.toInt(),
         position.longitude.toInt(),
         formatDate(now),
-        formatTime(roundedTime),
+        formatTime(closestTime),
       );
+
       setState(() {
         _weatherData = List<Map<String, dynamic>>.from(
             weatherData.values.expand((item) => item).toList());
