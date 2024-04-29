@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'weather_service.dart';
-import 'package:geolocator/geolocator.dart';
 
 void main() {
   runApp(const MyApp());
@@ -25,81 +24,54 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class WeatherScreenState extends State<WeatherScreen> {
-  final WeatherService _weatherService = WeatherService();
-  List<Map<String, dynamic>> _weatherData = [];
-  String _weatherDataMessage = "날씨 정보를 불러오는 중...";
+  final WeatherService weatherService = WeatherService();
+  List<Map<String, dynamic>> weatherData = [];
+  String weatherDataMessage = "날씨 정보를 불러오는 중...";
 
   @override
   void initState() {
     super.initState();
-    _fetchWeather();
+    fetchWeather();
   }
 
-  String formatDate(DateTime date) {
-    return "${date.year.toString().padLeft(4, '0')}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}";
-  }
-
-  String formatTime(TimeOfDay time) {
-    return "${time.hour.toString().padLeft(2, '0')}${time.minute.toString().padLeft(2, '0')}";
-  }
-
-  _fetchWeather() async {
+  fetchWeather() async {
     try {
-      Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
-      var now = DateTime.now();
-      var availableHours = [5, 8, 11, 14, 17, 20, 23];
-      var currentHour = now.hour;
-
-      // 현재 시간에 가장 가까운 가능한 시간을 찾음
-      var closestHour = availableHours.reduce(
-          (a, b) => (b - currentHour).abs() < (a - currentHour).abs() ? b : a);
-
-      // 현재 시간이 05시 이전이면 전날의 23시 데이터를 가져옴
-      if (closestHour < 5) {
-        now = now.subtract(const Duration(days: 1));
-        closestHour = 23;
-      }
-
-      var closestTime = TimeOfDay(hour: closestHour, minute: 0);
-      var weatherData = await _weatherService.fetchWeather(
-        position.latitude.toInt(),
-        position.longitude.toInt(),
-        formatDate(now),
-        formatTime(closestTime),
-      );
-
+      weatherData = await weatherService.fetchWeatherData(_selectedTime);
       setState(() {
-        _weatherData = List<Map<String, dynamic>>.from(
-            weatherData.values.expand((item) => item).toList());
-        _weatherDataMessage = "";
+        weatherDataMessage = "";
       });
     } catch (e) {
       setState(() {
-        _weatherDataMessage = "날씨 정보를 불러오는데 실패했습니다: $e";
+        weatherDataMessage = "날씨 정보를 불러오는데 실패했습니다: $e";
       });
     }
   }
 
-  _showDatePicker() async {
-    final DateTime? selectedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2021),
-      lastDate: DateTime(2030),
-    );
-    if (selectedDate != null) {
-      // Do something with the selected date
-    }
-  }
+  TimeOfDay _selectedTime = TimeOfDay.now();
+  List<Map<String, dynamic>> _selectedWeatherData = [];
 
-  _showTimePicker() async {
-    final TimeOfDay? selectedTime = await showTimePicker(
+  Future<void> _selectTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: _selectedTime,
+      builder: (BuildContext context, Widget? child) {
+        return Directionality(
+          textDirection: TextDirection.ltr,
+          child: child!,
+        );
+      },
     );
-    if (selectedTime != null) {
-      // Do something with the selected time
+    if (picked != null && picked != _selectedTime) {
+      setState(() {
+        _selectedTime = picked;
+      });
+      try {
+        _selectedWeatherData =
+            await weatherService.fetchWeatherData(_selectedTime);
+        fetchWeather();
+      } catch (e) {
+        print("날씨 정보를 불러오는데 실패했습니다: $e");
+      }
     }
   }
 
@@ -107,7 +79,7 @@ class WeatherScreenState extends State<WeatherScreen> {
   Widget build(BuildContext context) {
     // 날씨 데이터를 시간별로 그룹화
     var groupedWeatherData = <String, List<Map<String, dynamic>>>{};
-    for (var item in _weatherData) {
+    for (var item in weatherData) {
       if (!groupedWeatherData.containsKey(item['baseTime'])) {
         groupedWeatherData[item['baseTime']] = [];
       }
@@ -118,31 +90,38 @@ class WeatherScreenState extends State<WeatherScreen> {
       appBar: AppBar(
         title: const Text('날씨 정보'),
       ),
-      body: _weatherDataMessage.isNotEmpty
-          ? Center(
+      body: Column(
+        children: <Widget>[
+          if (weatherDataMessage.isNotEmpty)
+            Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: <Widget>[
                   const CircularProgressIndicator(),
                   const SizedBox(height: 20),
-                  Text(_weatherDataMessage),
-                  ElevatedButton(
-                    onPressed: _showDatePicker,
-                    child: const Text('날짜 선택'),
-                  ),
-                  ElevatedButton(
-                    onPressed: _showTimePicker,
-                    child: const Text('시간 선택'),
-                  ),
+                  Text(weatherDataMessage),
                 ],
               ),
-            )
-          : ListView.builder(
-              itemCount: _weatherData.length,
+            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: <Widget>[
+              Text(
+                'Selected time: ${_selectedTime.format(context)}',
+              ),
+              ElevatedButton(
+                onPressed: () => _selectTime(context),
+                child: const Text('Select time'),
+              ),
+            ],
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _selectedWeatherData.length,
               itemBuilder: (context, index) {
                 String skyStatus = '알 수 없음'; // 초기값 할당
-                if (_weatherData[index]['category'] == 'SKY') {
-                  switch (_weatherData[index]['fcstValue']) {
+                if (_selectedWeatherData[index]['category'] == 'SKY') {
+                  switch (_selectedWeatherData[index]['fcstValue']) {
                     case '1':
                       skyStatus = '맑음';
                       break;
@@ -161,34 +140,37 @@ class WeatherScreenState extends State<WeatherScreen> {
                   title: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text('시간: ${_weatherData[index]['baseTime']}'),
-                      if (_weatherData[index]['category'] == 'TMP')
-                        Text('온도: ${_weatherData[index]['fcstValue']}℃'),
-                      if (_weatherData[index]['category'] == 'TMX')
-                        Text('최고기온: ${_weatherData[index]['fcstValue']}℃'),
-                      if (_weatherData[index]['category'] == 'TMN')
-                        Text('최저기온: ${_weatherData[index]['fcstValue']}℃'),
-                      if (_weatherData[index]['category'] == 'UUU')
-                        Text('동서바람성분: ${_weatherData[index]['fcstValue']}'),
-                      if (_weatherData[index]['category'] == 'VVV')
-                        Text('남북바람성분: ${_weatherData[index]['fcstValue']}'),
-                      if (_weatherData[index]['category'] == 'VEC')
-                        Text('풍향: ${_weatherData[index]['fcstValue']}'),
-                      if (_weatherData[index]['category'] == 'WSD')
-                        Text('풍속: ${_weatherData[index]['fcstValue']}m/s'),
-                      if (_weatherData[index]['category'] == 'SKY')
+                      Text('시간: ${weatherData[index]['baseTime']}'),
+                      if (weatherData[index]['category'] == 'TMP')
+                        Text('온도: ${weatherData[index]['fcstValue']}℃'),
+                      if (weatherData[index]['category'] == 'TMX')
+                        Text('최고기온: ${weatherData[index]['fcstValue']}℃'),
+                      if (weatherData[index]['category'] == 'TMN')
+                        Text('최저기온: ${weatherData[index]['fcstValue']}℃'),
+                      if (weatherData[index]['category'] == 'UUU')
+                        Text('동서바람성분: ${weatherData[index]['fcstValue']}'),
+                      if (weatherData[index]['category'] == 'VVV')
+                        Text('남북바람성분: ${weatherData[index]['fcstValue']}'),
+                      if (weatherData[index]['category'] == 'VEC')
+                        Text('풍향: ${weatherData[index]['fcstValue']}'),
+                      if (weatherData[index]['category'] == 'WSD')
+                        Text('풍속: ${weatherData[index]['fcstValue']}m/s'),
+                      if (weatherData[index]['category'] == 'SKY')
                         Text('하늘상태: $skyStatus'),
-                      if (_weatherData[index]['category'] == 'PTY')
-                        Text('강수형태: ${_weatherData[index]['fcstValue']}'),
-                      if (_weatherData[index]['category'] == 'POP')
-                        Text('강수유무: ${_weatherData[index]['fcstValue']}%'),
-                      if (_weatherData[index]['category'] == 'PCP')
-                        Text('1시간 강수량: ${_weatherData[index]['fcstValue']}'),
+                      if (weatherData[index]['category'] == 'PTY')
+                        Text('강수형태: ${weatherData[index]['fcstValue']}'),
+                      if (weatherData[index]['category'] == 'POP')
+                        Text('강수유무: ${weatherData[index]['fcstValue']}%'),
+                      if (weatherData[index]['category'] == 'PCP')
+                        Text('1시간 강수량: ${weatherData[index]['fcstValue']}'),
                     ],
                   ),
                 );
               },
             ),
+          )
+        ],
+      ),
     );
   }
 }

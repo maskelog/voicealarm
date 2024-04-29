@@ -1,4 +1,7 @@
 import 'dart:convert';
+
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class WeatherService {
@@ -24,6 +27,63 @@ class WeatherService {
       }
     } else {
       throw Exception('Failed to connect to the Weather API');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchWeatherData(
+      TimeOfDay selectedTime) async {
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      var now = DateTime.now();
+      var availableHours = [5, 8, 11, 14, 17, 20, 23];
+      var currentHour = selectedTime.hour;
+
+      // 선택한 시간에 가장 가까운 가능한 시간을 찾음
+      var closestHour = availableHours.reduce(
+          (a, b) => (b - currentHour).abs() < (a - currentHour).abs() ? b : a);
+
+      // 선택한 시간이 05시 이전이면 전날의 23시 데이터를 가져옴
+      if (closestHour < 5) {
+        now = now.subtract(const Duration(days: 1));
+        closestHour = 23;
+      }
+
+      var closestTime = TimeOfDay(hour: closestHour, minute: 0);
+      var weatherData = await fetchWeather(
+        position.latitude.toInt(),
+        position.longitude.toInt(),
+        formatDate(now),
+        formatTime(closestTime),
+      );
+
+      return List<Map<String, dynamic>>.from(
+          weatherData.values.expand((item) => item).toList());
+    } catch (e) {
+      throw Exception("날씨 정보를 불러오는데 실패했습니다: $e");
+    }
+  }
+
+  String formatDate(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}';
+  }
+
+  String formatTime(TimeOfDay time) {
+    return '${time.hour.toString().padLeft(2, '0')}${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  String getSkyStatus(String fcstValue) {
+    switch (fcstValue) {
+      case '1':
+        return '맑음';
+      case '2':
+        return '구름조금';
+      case '3':
+        return '구름많음';
+      case '4':
+        return '흐림';
+      default:
+        return '알 수 없음';
     }
   }
 }
