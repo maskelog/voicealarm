@@ -109,6 +109,8 @@ class WeatherScreenState extends State<WeatherScreen> {
       groupedWeatherData[item['baseTime']]?.add(item);
     }
 
+    String? lastBaseTime;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('날씨 정보'),
@@ -153,54 +155,74 @@ class WeatherScreenState extends State<WeatherScreen> {
             child: ListView.builder(
               itemCount: _selectedWeatherData.length,
               itemBuilder: (context, index) {
-                String skyStatus = '알 수 없음'; // 초기값 할당
-                if (_selectedWeatherData[index]['category'] == 'SKY') {
-                  switch (_selectedWeatherData[index]['fcstValue']) {
-                    case '1':
-                      skyStatus = '맑음';
-                      break;
-                    case '2':
-                      skyStatus = '구름조금';
-                      break;
-                    case '3':
-                      skyStatus = '구름많음';
-                      break;
-                    case '4':
-                      skyStatus = '흐림';
-                      break;
+                String? lastBaseTime; // 이전 baseTime 값을 추적하는 변수
+
+                List<Widget> children = [];
+
+                for (var data in _selectedWeatherData) {
+                  if (lastBaseTime != data['baseTime']) {
+                    lastBaseTime = data['baseTime'];
+                    children.add(Text('시간: ${data['baseTime']}'));
+                  }
+
+                  String skyStatus = '알 수 없음'; // 초기값 할당
+                  if (data['category'] == 'SKY') {
+                    switch (data['fcstValue']) {
+                      case '1':
+                        skyStatus = '맑음';
+                        break;
+                      case '2':
+                        skyStatus = '구름조금';
+                        break;
+                      case '3':
+                        skyStatus = '구름많음';
+                        break;
+                      case '4':
+                        skyStatus = '흐림';
+                        break;
+                    }
+                  }
+
+                  if (data['category'] == 'TMP') {
+                    children.add(Text('온도: ${data['fcstValue']}℃'));
+                  }
+                  if (data['category'] == 'TMX') {
+                    children.add(Text('최고기온: ${data['fcstValue']}℃'));
+                  }
+                  if (data['category'] == 'TMN') {
+                    children.add(Text('최저기온: ${data['fcstValue']}℃'));
+                  }
+                  if (data['category'] == 'UUU') {
+                    children.add(Text('동서바람성분: ${data['fcstValue']}'));
+                  }
+                  if (data['category'] == 'VVV') {
+                    children.add(Text('남북바람성분: ${data['fcstValue']}'));
+                  }
+                  if (data['category'] == 'VEC') {
+                    children.add(Text('풍향: ${data['fcstValue']}m/s'));
+                  }
+                  if (data['category'] == 'WSD') {
+                    children.add(Text('풍속: ${data['fcstValue']}m/s'));
+                  }
+                  if (data['category'] == 'SKY') {
+                    children.add(Text('하늘상태: $skyStatus'));
+                  }
+                  if (data['category'] == 'PTY') {
+                    children.add(Text('강수형태: ${data['fcstValue']}'));
+                  }
+                  if (data['category'] == 'POP') {
+                    children.add(Text('강수유무: ${data['fcstValue']}%'));
+                  }
+                  if (data['category'] == 'PCP') {
+                    children.add(Text('1시간 강수량: ${data['fcstValue']}mm'));
                   }
                 }
+
                 return Card(
                   child: ListTile(
                     title: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        if (weatherData.isNotEmpty) ...[
-                          Text('시간: ${weatherData[index]['baseTime']}'),
-                          if (weatherData[index]['category'] == 'TMP')
-                            Text('온도: ${weatherData[index]['fcstValue']}℃'),
-                          if (weatherData[index]['category'] == 'TMX')
-                            Text('최고기온: ${weatherData[index]['fcstValue']}℃'),
-                          if (weatherData[index]['category'] == 'TMN')
-                            Text('최저기온: ${weatherData[index]['fcstValue']}℃'),
-                          if (weatherData[index]['category'] == 'UUU')
-                            Text('동서바람성분: ${weatherData[index]['fcstValue']}'),
-                          if (weatherData[index]['category'] == 'VVV')
-                            Text('남북바람성분: ${weatherData[index]['fcstValue']}'),
-                          if (weatherData[index]['category'] == 'VEC')
-                            Text('풍향: ${weatherData[index]['fcstValue']}'),
-                          if (weatherData[index]['category'] == 'WSD')
-                            Text('풍속: ${weatherData[index]['fcstValue']}m/s'),
-                          if (weatherData[index]['category'] == 'SKY')
-                            Text('하늘상태: $skyStatus'),
-                          if (weatherData[index]['category'] == 'PTY')
-                            Text('강수형태: ${weatherData[index]['fcstValue']}'),
-                          if (weatherData[index]['category'] == 'POP')
-                            Text('강수유무: ${weatherData[index]['fcstValue']}%'),
-                          if (weatherData[index]['category'] == 'PCP')
-                            Text('1시간 강수량: ${weatherData[index]['fcstValue']}'),
-                        ],
-                      ],
+                      children: children,
                     ),
                   ),
                 );
