@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'weather_service.dart';
 
@@ -158,66 +160,63 @@ class WeatherScreenState extends State<WeatherScreen> {
                 String? lastBaseTime; // 이전 baseTime 값을 추적하는 변수
 
                 List<Widget> children = [];
+                String skyStatus = '알 수 없음'; // 초기값 할당
+                String rainStatus = '';
+                double? uuu, vvv, windSpeed;
+                String? temperature, windDirection;
+                Widget? windIcon;
 
                 for (var data in _selectedWeatherData) {
-                  if (lastBaseTime != data['baseTime']) {
-                    lastBaseTime = data['baseTime'];
-                    children.add(Text('시간: ${data['baseTime']}'));
+                  if (data['category'] == 'UUU') {
+                    uuu = double.parse(data['fcstValue']);
                   }
 
-                  String skyStatus = '알 수 없음'; // 초기값 할당
-                  if (data['category'] == 'SKY') {
-                    switch (data['fcstValue']) {
-                      case '1':
-                        skyStatus = '맑음';
-                        break;
-                      case '2':
-                        skyStatus = '구름조금';
-                        break;
-                      case '3':
-                        skyStatus = '구름많음';
-                        break;
-                      case '4':
-                        skyStatus = '흐림';
-                        break;
+                  if (data['category'] == 'VVV') {
+                    vvv = double.parse(data['fcstValue']);
+                  }
+
+                  if (uuu != null && vvv != null) {
+                    windSpeed = sqrt(pow(uuu, 2) + pow(vvv, 2));
+                    double angle = atan2(vvv, uuu) * 180 / pi;
+
+                    windIcon = Transform.rotate(
+                      angle: -angle * pi / 180, // 각도를 라디안으로 변환
+                      child: const Icon(Icons.arrow_upward),
+                    );
+
+                    if (angle < 0) {
+                      angle += 360;
+                    }
+
+                    if (angle >= 337.5 || angle < 22.5) {
+                      windDirection = '북풍';
+                    } else if (angle >= 22.5 && angle < 67.5) {
+                      windDirection = '북동풍';
+                    } else if (angle >= 67.5 && angle < 112.5) {
+                      windDirection = '동풍';
+                    } else if (angle >= 112.5 && angle < 157.5) {
+                      windDirection = '남동풍';
+                    } else if (angle >= 157.5 && angle < 202.5) {
+                      windDirection = '남풍';
+                    } else if (angle >= 202.5 && angle < 247.5) {
+                      windDirection = '남서풍';
+                    } else if (angle >= 247.5 && angle < 292.5) {
+                      windDirection = '서풍';
+                    } else if (angle >= 292.5 && angle < 337.5) {
+                      windDirection = '북서풍';
                     }
                   }
 
                   if (data['category'] == 'TMP') {
-                    children.add(Text('온도: ${data['fcstValue']}℃'));
-                  }
-                  if (data['category'] == 'TMX') {
-                    children.add(Text('최고기온: ${data['fcstValue']}℃'));
-                  }
-                  if (data['category'] == 'TMN') {
-                    children.add(Text('최저기온: ${data['fcstValue']}℃'));
-                  }
-                  if (data['category'] == 'UUU') {
-                    children.add(Text('동서바람성분: ${data['fcstValue']}'));
-                  }
-                  if (data['category'] == 'VVV') {
-                    children.add(Text('남북바람성분: ${data['fcstValue']}'));
-                  }
-                  if (data['category'] == 'VEC') {
-                    children.add(Text('풍향: ${data['fcstValue']}m/s'));
-                  }
-                  if (data['category'] == 'WSD') {
-                    children.add(Text('풍속: ${data['fcstValue']}m/s'));
-                  }
-                  if (data['category'] == 'SKY') {
-                    children.add(Text('하늘상태: $skyStatus'));
-                  }
-                  if (data['category'] == 'PTY') {
-                    children.add(Text('강수형태: ${data['fcstValue']}'));
-                  }
-                  if (data['category'] == 'POP') {
-                    children.add(Text('강수유무: ${data['fcstValue']}%'));
-                  }
-                  if (data['category'] == 'PCP') {
-                    children.add(Text('1시간 강수량: ${data['fcstValue']}mm'));
+                    temperature = '온도: ${data['fcstValue']}℃';
                   }
                 }
 
+                children.add(Text(temperature ?? '',
+                    style: const TextStyle(fontSize: 24)));
+                children.add(windIcon ?? const SizedBox.shrink());
+                children.add(Text(
+                    '풍향: $windDirection, 풍속: ${windSpeed?.toStringAsFixed(1)}m/s'));
                 return Card(
                   child: ListTile(
                     title: Column(
