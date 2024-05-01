@@ -157,13 +157,11 @@ class WeatherScreenState extends State<WeatherScreen> {
             child: ListView.builder(
               itemCount: _selectedWeatherData.length,
               itemBuilder: (context, index) {
-                String? lastBaseTime; // 이전 baseTime 값을 추적하는 변수
-
                 List<Widget> children = [];
-                String skyStatus = '알 수 없음'; // 초기값 할당
+                String skyStatus = '알 수 없음';
                 String rainStatus = '';
                 double? uuu, vvv, windSpeed;
-                String? temperature, windDirection;
+                String? temperature, windDirection, humidity;
                 Widget? windIcon;
 
                 for (var data in _selectedWeatherData) {
@@ -210,13 +208,52 @@ class WeatherScreenState extends State<WeatherScreen> {
                   if (data['category'] == 'TMP') {
                     temperature = '온도: ${data['fcstValue']}℃';
                   }
+                  if (data['category'] == 'PTY') {
+                    switch (data['fcstValue']) {
+                      case '0':
+                        rainStatus = '강수형태: 없음';
+                        break;
+                      case '1':
+                        rainStatus = '강수형태: 비';
+                        break;
+                      case '2':
+                        rainStatus = '강수형태: 비/눈';
+                        break;
+                      case '3':
+                        rainStatus = '강수형태: 눈';
+                        break;
+                      default:
+                        rainStatus = '강수형태: 알 수 없음';
+                    }
+                  }
+                  if (data['category'] == 'SKY') {
+                    switch (data['fcstValue']) {
+                      case '1':
+                        skyStatus = '하늘 상태: 맑음';
+                        break;
+                      case '3':
+                        skyStatus = '하늘 상태: 구름많음';
+                        break;
+                      case '4':
+                        skyStatus = '하늘 상태: 흐림';
+                        break;
+                      default:
+                        skyStatus = '하늘 상태: 알 수 없음';
+                    }
+                  }
+                  if (data['category'] == 'REH') {
+                    humidity = '${data['fcstValue']}%';
+                  }
                 }
 
+                children.add(Text(skyStatus));
                 children.add(Text(temperature ?? '',
                     style: const TextStyle(fontSize: 24)));
                 children.add(windIcon ?? const SizedBox.shrink());
                 children.add(Text(
                     '풍향: $windDirection, 풍속: ${windSpeed?.toStringAsFixed(1)}m/s'));
+                children.add(Text(rainStatus));
+                children.add(Text('습도: $humidity'));
                 return Card(
                   child: ListTile(
                     title: Column(
