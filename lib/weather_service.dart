@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -7,7 +8,7 @@ import 'package:http/http.dart' as http;
 class WeatherService {
   final String baseUrl =
       "https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst";
-  final String apiKey = "WaioH0gCRdioqB9IAmXYkg";
+  final String apiKey = dotenv.env['APIHUB']!;
 
   Future<Map<String, dynamic>> fetchWeather(
       int nx, int ny, String baseDate, String baseTime) async {

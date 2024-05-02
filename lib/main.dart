@@ -1,9 +1,11 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'weather_service.dart';
 
-void main() {
+Future main() async {
+  await dotenv.load();
   runApp(const MyApp());
 }
 
@@ -111,10 +113,6 @@ class WeatherScreenState extends State<WeatherScreen> {
       groupedWeatherData[item['baseTime']]?.add(item);
     }
 
-    String? lastBaseTime;
-    String rainfall = '강수량: 알 수 없음';
-    String snowfall = '적설량: 알 수 없음';
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('날씨 정보'),
@@ -156,146 +154,110 @@ class WeatherScreenState extends State<WeatherScreen> {
             ],
           ),
           Expanded(
-            child: ListView.builder(
-              itemCount: _selectedWeatherData.length,
-              itemBuilder: (context, index) {
-                List<Widget> children = [];
-                String skyStatus = '알 수 없음';
-                String rainStatus = '';
-                double? uuu, vvv, windSpeed;
-                String? temperature, windDirection, humidity;
-                Widget? windIcon;
-
-                for (var data in _selectedWeatherData) {
-                  if (data['category'] == 'UUU') {
-                    uuu = double.parse(data['fcstValue']);
-                  }
-
-                  if (data['category'] == 'VVV') {
-                    vvv = double.parse(data['fcstValue']);
-                  }
-
-                  if (uuu != null && vvv != null) {
-                    windSpeed = sqrt(pow(uuu, 2) + pow(vvv, 2));
-                    double angle = atan2(vvv, uuu) * 180 / pi;
-
-                    windIcon = Transform.rotate(
-                      angle: -angle * pi / 180, // 각도를 라디안으로 변환
-                      child: const Icon(Icons.arrow_upward),
-                    );
-
-                    if (angle < 0) {
-                      angle += 360;
-                    }
-
-                    if (angle >= 337.5 || angle < 22.5) {
-                      windDirection = '북풍';
-                    } else if (angle >= 22.5 && angle < 67.5) {
-                      windDirection = '북동풍';
-                    } else if (angle >= 67.5 && angle < 112.5) {
-                      windDirection = '동풍';
-                    } else if (angle >= 112.5 && angle < 157.5) {
-                      windDirection = '남동풍';
-                    } else if (angle >= 157.5 && angle < 202.5) {
-                      windDirection = '남풍';
-                    } else if (angle >= 202.5 && angle < 247.5) {
-                      windDirection = '남서풍';
-                    } else if (angle >= 247.5 && angle < 292.5) {
-                      windDirection = '서풍';
-                    } else if (angle >= 292.5 && angle < 337.5) {
-                      windDirection = '북서풍';
-                    }
-                  }
-
-                  if (data['category'] == 'TMP') {
-                    temperature = '온도: ${data['fcstValue']}℃';
-                  }
-                  if (data['category'] == 'PTY') {
-                    switch (data['fcstValue']) {
-                      case '0':
-                        rainStatus = '강수형태: 없음';
-                        break;
-                      case '1':
-                        rainStatus = '강수형태: 비';
-                        break;
-                      case '2':
-                        rainStatus = '강수형태: 비/눈';
-                        break;
-                      case '3':
-                        rainStatus = '강수형태: 눈';
-                        break;
-                      default:
-                        rainStatus = '강수형태: 알 수 없음';
-                    }
-                  }
-                  if (data['category'] == 'SKY') {
-                    switch (data['fcstValue']) {
-                      case '1':
-                        skyStatus = '하늘 상태: 맑음';
-                        break;
-                      case '3':
-                        skyStatus = '하늘 상태: 구름많음';
-                        break;
-                      case '4':
-                        skyStatus = '하늘 상태: 흐림';
-                        break;
-                      default:
-                        skyStatus = '하늘 상태: 알 수 없음';
-                    }
-                  }
-                  if (data['category'] == 'REH') {
-                    humidity = '${data['fcstValue']}%';
-                  }
-                  if ('POP' == data['category']) {
-                    rainStatus = '강수확률: ${data['fcstValue']}%';
-                  }
-                  if ('PCP' == data['category']) {
-                    switch (data['fcstValue']) {
-                      case '강수없음':
-                        rainfall = '강수량: 없음';
-                        break;
-                      default:
-                        rainfall = '강수량: ${data['fcstValue']}mm';
-                    }
-                  }
-                  if ('SNO' == data['category']) {
-                    switch (data['fcstValue']) {
-                      case '적설없음':
-                        snowfall = '적설량: 없음';
-                        break;
-                      default:
-                        snowfall = '적설량: ${data['fcstValue']}cm';
-                    }
-                  }
-                }
-
-                children.add(Text(skyStatus));
-                children.add(Text(temperature ?? '',
-                    style: const TextStyle(fontSize: 24)));
-                children.add(windIcon ?? const SizedBox.shrink());
-                children.add(Text(
-                    '풍향: $windDirection, 풍속: ${windSpeed?.toStringAsFixed(1)}m/s'));
-                children.add(Text('습도: $humidity'));
-                children.add(Text(rainStatus));
-                if (rainfall.isNotEmpty == true && rainfall != '강수량: 없음') {
-                  children.add(Text(rainfall));
-                }
-                if (snowfall.isNotEmpty == true && snowfall != '적설량: 없음') {
-                  children.add(Text(snowfall));
-                }
-                return Card(
-                  child: ListTile(
-                    title: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: children,
-                    ),
-                  ),
-                );
-              },
-            ),
+            child: weatherCard(_selectedWeatherData),
           )
         ],
       ),
+    );
+  }
+
+  ListView weatherCard(List<Map<String, dynamic>> selectedWeatherData) {
+    return ListView.builder(
+      itemCount: selectedWeatherData.length,
+      itemBuilder: (context, index) {
+        selectedWeatherData[index];
+        double? uuu, vvv, windSpeed;
+        String? temperature, windDirection, humidity, skyStatus = '알 수 없음';
+        Icon? weatherIcon;
+        String rainfall = '강수량: 없음';
+        String snowfall = '적설량: 없음';
+
+        // 데이터 분석 및 처리
+        for (var data in selectedWeatherData) {
+          switch (data['category']) {
+            case 'UUU':
+              uuu = double.tryParse(data['fcstValue'] ?? '0');
+              break;
+            case 'VVV':
+              vvv = double.tryParse(data['fcstValue'] ?? '0');
+              break;
+            case 'TMP':
+              temperature = '온도: ${data['fcstValue']}℃';
+              break;
+            case 'REH':
+              humidity = '습도: ${data['fcstValue']}%';
+              break;
+            case 'SKY':
+              switch (data['fcstValue']) {
+                case '1':
+                  skyStatus = '하늘 상태: 맑음';
+                  weatherIcon = const Icon(Icons.wb_sunny);
+                  break;
+                case '3':
+                  skyStatus = '하늘 상태: 구름많음';
+                  weatherIcon = const Icon(Icons.cloud);
+                  break;
+                case '4':
+                  skyStatus = '하늘 상태: 흐림';
+                  weatherIcon = const Icon(Icons.cloud_off);
+                  break;
+                default:
+                  skyStatus = '하늘 상태: 알 수 없음';
+                  weatherIcon = const Icon(Icons.error);
+              }
+              break;
+            case 'PCP':
+              if (data['fcstValue'] != '강수없음') {
+                rainfall = '강수량: ${data['fcstValue']}mm';
+              }
+              break;
+            case 'SNO':
+              if (data['fcstValue'] != '적설없음') {
+                snowfall = '적설량: ${data['fcstValue']}cm';
+              }
+              break;
+          }
+
+          // 풍속 및 풍향 계산
+          if (uuu != null && vvv != null) {
+            windSpeed = sqrt(pow(uuu, 2) + pow(vvv, 2));
+            double angle = atan2(vvv, uuu) * 180 / pi;
+            if (angle < 0) angle += 360;
+            windDirection = [
+              '북풍',
+              '북동풍',
+              '동풍',
+              '남동풍',
+              '남풍',
+              '남서풍',
+              '서풍',
+              '북서풍'
+            ][(angle / 45).floor() % 8];
+          }
+        }
+
+        // 위젯 리스트 구성
+        List<Widget> children = [
+          if (skyStatus != null && skyStatus.isNotEmpty) Text(skyStatus),
+          if (weatherIcon != null) weatherIcon,
+          if (temperature != null)
+            Text(temperature, style: const TextStyle(fontSize: 24)),
+          if (windDirection != null && windSpeed != null)
+            Text('풍향: $windDirection, 풍속: ${windSpeed.toStringAsFixed(1)}m/s'),
+          if (humidity != null) Text(humidity),
+          if (rainfall != '강수량: 없음') Text(rainfall),
+          if (snowfall != '적설량: 없음') Text(snowfall)
+        ];
+
+        return Card(
+          child: ListTile(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ),
+        );
+      },
     );
   }
 }
