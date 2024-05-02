@@ -112,6 +112,8 @@ class WeatherScreenState extends State<WeatherScreen> {
     }
 
     String? lastBaseTime;
+    String rainfall = '강수량: 알 수 없음';
+    String snowfall = '적설량: 알 수 없음';
 
     return Scaffold(
       appBar: AppBar(
@@ -244,6 +246,27 @@ class WeatherScreenState extends State<WeatherScreen> {
                   if (data['category'] == 'REH') {
                     humidity = '${data['fcstValue']}%';
                   }
+                  if ('POP' == data['category']) {
+                    rainStatus = '강수확률: ${data['fcstValue']}%';
+                  }
+                  if ('PCP' == data['category']) {
+                    switch (data['fcstValue']) {
+                      case '강수없음':
+                        rainfall = '강수량: 없음';
+                        break;
+                      default:
+                        rainfall = '강수량: ${data['fcstValue']}mm';
+                    }
+                  }
+                  if ('SNO' == data['category']) {
+                    switch (data['fcstValue']) {
+                      case '적설없음':
+                        snowfall = '적설량: 없음';
+                        break;
+                      default:
+                        snowfall = '적설량: ${data['fcstValue']}cm';
+                    }
+                  }
                 }
 
                 children.add(Text(skyStatus));
@@ -252,8 +275,14 @@ class WeatherScreenState extends State<WeatherScreen> {
                 children.add(windIcon ?? const SizedBox.shrink());
                 children.add(Text(
                     '풍향: $windDirection, 풍속: ${windSpeed?.toStringAsFixed(1)}m/s'));
-                children.add(Text(rainStatus));
                 children.add(Text('습도: $humidity'));
+                children.add(Text(rainStatus));
+                if (rainfall.isNotEmpty == true && rainfall != '강수량: 없음') {
+                  children.add(Text(rainfall));
+                }
+                if (snowfall.isNotEmpty == true && snowfall != '적설량: 없음') {
+                  children.add(Text(snowfall));
+                }
                 return Card(
                   child: ListTile(
                     title: Column(
