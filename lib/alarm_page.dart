@@ -6,12 +6,20 @@ class Alarm {
   List<bool> days;
   bool isEnabled;
 
-  Alarm(this.time, this.date, this.days, this.isEnabled);
+  Alarm(this.time, this.date, this.days, this.isEnabled,
+      {required TimeOfDay time,
+      required DateTime date,
+      required Map<String, bool> repeatDays,
+      required bool isEnabled,
+      required String sound,
+      required String name});
 }
 
 // 알람 설정 페이지
 class AlarmSettingPage extends StatefulWidget {
-  const AlarmSettingPage({super.key});
+  final List<Alarm> alarms;
+
+  const AlarmSettingPage({Key? key, required this.alarms}) : super(key: key);
 
   @override
   AlarmSettingPageState createState() => AlarmSettingPageState();
@@ -86,7 +94,7 @@ class AlarmSettingPageState extends State<AlarmSettingPage> {
             child: const Text('알람 설정'),
             onPressed: () {
               setState(() {
-                alarms.add(
+                widget.alarms.add(
                     Alarm(_selectedTime, _selectedDate, _selectedDays, true));
               });
               ScaffoldMessenger.of(context).showSnackBar(

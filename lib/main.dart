@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_voice_alarm/alarm_page.dart';
+import 'package:flutter_voice_alarm/alarm_info.dart';
+import 'package:intl/intl.dart';
 import 'weather_service.dart';
 
 Future main() async {
@@ -31,11 +32,18 @@ class WeatherScreenState extends State<WeatherScreen> {
   WeatherService weatherService = WeatherService();
   Map<String, dynamic> latestWeatherData = {};
   String weatherDataMessage = "날씨 정보를 불러오는 중...";
-  List<Alarm> alarms = [];
+  List<AlarmInfo> alarms = [];
+
   @override
   void initState() {
     super.initState();
     fetchWeather();
+    loadAlarms();
+  }
+
+  void loadAlarms() {
+    // 이 함수는 알람 데이터를 로드하는 로직을 구현해야 함
+    // 예: alarms = await alarmStorage.getAlarms();
   }
 
   fetchWeather() async {
@@ -131,22 +139,23 @@ class WeatherScreenState extends State<WeatherScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double? vec = double.tryParse(latestWeatherData['windDirection'] ?? '0');
     return Scaffold(
       appBar: AppBar(
-        title: const Text('통합 날씨 정보'),
-        actions: <Widget>[
+        title: const Text('보이스 알람'),
+        actions: [
           IconButton(
             icon: const Icon(Icons.date_range),
             onPressed: () async {
-              final date = await showDatePicker(
+              final DateTime? date = await showDatePicker(
                 context: context,
                 initialDate: DateTime.now(),
                 firstDate: DateTime(2000),
                 lastDate: DateTime(2050),
               );
               if (date != null) {
-                _selectedDate = date;
+                setState(() {
+                  _selectedDate = date;
+                });
                 updateWeatherData();
               }
             },
@@ -154,80 +163,283 @@ class WeatherScreenState extends State<WeatherScreen> {
           IconButton(
             icon: const Icon(Icons.access_time),
             onPressed: () async {
-              final time = await showTimePicker(
+              final TimeOfDay? time = await showTimePicker(
                 context: context,
                 initialTime: TimeOfDay.now(),
               );
               if (time != null) {
-                _selectedTime = time;
+                setState(() {
+                  _selectedTime = time;
+                });
                 updateWeatherData();
               }
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.alarm),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const AlarmSettingPage()),
-              );
-            },
-          ),
         ],
       ),
-      body: Center(
-        child: Column(
-          children: [
-            weatherDataMessage.isNotEmpty
-                ? Text(weatherDataMessage)
-                : Card(
-                    child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(latestWeatherData['temperature'] ??
-                                '온도: 정보 없음'),
-                            Text(latestWeatherData['skyStatus'] ??
-                                '하늘 상태: 정보 없음'),
-                            Text(latestWeatherData['humidity'] ?? '습도: 정보 없음'),
-                            Text(
-                                '풍향: ${latestWeatherData['windDirection'] ?? '정보 없음'}'),
-                            getWindDirectionWidget(vec),
-                            Text(latestWeatherData['windSpeed'] ?? '풍속: 정보 없음'),
-                          ],
-                        )),
-                  ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: alarms.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text('알람 시간: ${alarms[index].time.format(context)}'),
-                  );
-                },
-              ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(weatherDataMessage),
+                Text(latestWeatherData['temperature'] ?? '온도: 정보 없음'),
+                Text(latestWeatherData['skyStatus'] ?? '하늘 상태: 정보 없음'),
+                Text(latestWeatherData['humidity'] ?? '습도: 정보 없음'),
+                Text(latestWeatherData['windDirection'] ?? '풍향: 정보 없음'),
+                Text(latestWeatherData['windSpeed'] ?? '풍속: 정보 없음'),
+              ],
             ),
-            ListView.builder(
-              shrinkWrap: true,
+          ),
+          Expanded(
+            child: ListView.builder(
               itemCount: alarms.length,
               itemBuilder: (context, index) {
+                final alarm = alarms[index];
                 return ListTile(
-                  title: Text('알람: ${alarms[index].time.format(context)}'),
+                  title:
+                      Text('알람: ${alarm.time.format(context)} - ${alarm.name}'),
+                  subtitle: Text('Enabled: ${alarm.isEnabled}'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () => showEditAlarmDialog(alarm, index),
+                  ),
                 );
               },
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: showAddAlarmDialog,
+        tooltip: 'Add Alarm',
+        child: const Icon(Icons.add),
       ),
     );
   }
-}
 
-class Alarm {
-  final TimeOfDay time;
+  void showEditAlarmDialog(AlarmInfo alarm, int index) {
+    TextEditingController nameController =
+        TextEditingController(text: alarm.name);
+    TimeOfDay selectedTime = alarm.time;
+    DateTime selectedDate = alarm.date;
+    List<String> daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-  Alarm(this.time);
+    // 기존 알람의 반복 요일 상태를 가져와서 복사합니다.
+    List<bool> selectedDays =
+        daysOfWeek.map((day) => alarm.repeatDays[day] ?? false).toList();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Edit Alarm'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    TextField(
+                      controller: nameController,
+                      decoration:
+                          const InputDecoration(labelText: 'Alarm Name'),
+                    ),
+                    ListTile(
+                      title: Text('Time: ${selectedTime.format(context)}'),
+                      onTap: () async {
+                        final TimeOfDay? pickedTime = await showTimePicker(
+                          context: context,
+                          initialTime: selectedTime,
+                        );
+                        if (pickedTime != null) {
+                          setStateDialog(() {
+                            selectedTime = pickedTime;
+                          });
+                        }
+                      },
+                    ),
+                    ListTile(
+                      title: Text(
+                          'Date: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
+                      onTap: () async {
+                        final DateTime? pickedDate = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2050),
+                        );
+                        if (pickedDate != null) {
+                          setStateDialog(() {
+                            selectedDate = pickedDate;
+                          });
+                        }
+                      },
+                    ),
+                    Wrap(
+                      spacing: 8.0,
+                      children:
+                          List<Widget>.generate(daysOfWeek.length, (int index) {
+                        return ChoiceChip(
+                          label: Text(daysOfWeek[index]),
+                          selected: selectedDays[index],
+                          onSelected: (bool selected) {
+                            setStateDialog(() {
+                              selectedDays[index] = selected;
+                            });
+                          },
+                          selectedColor: Colors.blue,
+                          backgroundColor: Colors.grey,
+                          labelStyle: TextStyle(
+                              color: selectedDays[index]
+                                  ? Colors.white
+                                  : Colors.black),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    setState(() {
+                      alarms[index] = AlarmInfo(
+                        time: selectedTime,
+                        date: selectedDate,
+                        repeatDays: Map.fromIterables(daysOfWeek, selectedDays),
+                        isEnabled: alarm.isEnabled,
+                        sound: alarm.sound,
+                        name: nameController.text.trim(),
+                        nx: alarm.nx,
+                        ny: alarm.ny,
+                      );
+                    });
+                  },
+                  child: const Text('Save'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    setState(() {
+                      alarms.removeAt(index);
+                    });
+                  },
+                  child:
+                      const Text('Delete', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void showAddAlarmDialog() {
+    TextEditingController nameController = TextEditingController();
+    TimeOfDay selectedTime = TimeOfDay.now();
+    DateTime selectedDate = DateTime.now();
+    List<bool> selectedDays = List.generate(7, (_) => false); // 모든 요일 비활성화로 초기화
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Add New Alarm'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Alarm Name'),
+                ),
+                ListTile(
+                  title: Text('Time: ${selectedTime.format(context)}'),
+                  onTap: () async {
+                    final TimeOfDay? pickedTime = await showTimePicker(
+                      context: context,
+                      initialTime: selectedTime,
+                    );
+                    if (pickedTime != null) {
+                      selectedTime = pickedTime;
+                    }
+                  },
+                ),
+                ListTile(
+                  title: Text('Date: ${selectedDate.toString()}'),
+                  onTap: () async {
+                    final DateTime? pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2050),
+                    );
+                    if (pickedDate != null) {
+                      selectedDate = pickedDate;
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                // 요일 배열
+                List<String> daysOfWeek = [
+                  "Mon",
+                  "Tue",
+                  "Wed",
+                  "Thu",
+                  "Fri",
+                  "Sat",
+                  "Sun"
+                ];
+                // List<bool>을 Map<String, bool>로 변환
+                Map<String, bool> daysMap = {
+                  for (int i = 0; i < daysOfWeek.length; i++)
+                    daysOfWeek[i]: selectedDays[i]
+                };
+
+                setState(() {
+                  // 알람 정보 객체를 생성하고 리스트에 추가합니다.
+                  alarms.add(AlarmInfo(
+                      time: selectedTime,
+                      date: selectedDate,
+                      repeatDays: daysMap,
+                      isEnabled: true,
+                      sound: 'default_sound.mp3',
+                      name: nameController.text.trim(),
+                      nx: 0, // 임시 좌표 값
+                      ny: 0 // 임시 좌표 값
+                      ));
+                });
+                Navigator.of(context).pop();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.blue,
+                disabledForegroundColor:
+                    Colors.grey.withOpacity(0.38).withOpacity(0.38),
+              ),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
