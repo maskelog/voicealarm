@@ -1,7 +1,7 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_voice_alarm/alarm_page.dart';
 import 'weather_service.dart';
 
 Future main() async {
@@ -29,9 +29,9 @@ class WeatherScreen extends StatefulWidget {
 
 class WeatherScreenState extends State<WeatherScreen> {
   WeatherService weatherService = WeatherService();
-  List<Map<String, dynamic>> weatherData = [];
+  Map<String, dynamic> latestWeatherData = {};
   String weatherDataMessage = "날씨 정보를 불러오는 중...";
-
+  List<Alarm> alarms = [];
   @override
   void initState() {
     super.initState();
@@ -40,8 +40,9 @@ class WeatherScreenState extends State<WeatherScreen> {
 
   fetchWeather() async {
     try {
-      weatherData =
+      var data =
           await weatherService.fetchWeatherData(_selectedTime, _selectedDate);
+      processWeatherData(data);
       setState(() {
         weatherDataMessage = "";
       });
@@ -54,210 +55,179 @@ class WeatherScreenState extends State<WeatherScreen> {
 
   TimeOfDay _selectedTime = TimeOfDay.now();
   DateTime _selectedDate = DateTime.now();
-  final List<Map<String, dynamic>> _selectedWeatherData = [];
 
-  Future<void> _selectTime(BuildContext context) async {
-    const TimeOfDay initialTime = TimeOfDay(hour: 5, minute: 0);
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: initialTime,
-      builder: (BuildContext context, Widget? child) {
-        return Directionality(
-          textDirection: TextDirection.ltr,
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && picked != _selectedTime) {
-      setState(() {
-        if (picked.hour < 5) {
-          _selectedTime = const TimeOfDay(hour: 23, minute: 0);
-          _selectedDate = _selectedDate.subtract(const Duration(days: 1));
-        } else {
-          _selectedTime = picked;
-        }
-      });
+  void processWeatherData(List<Map<String, dynamic>> weatherData) {
+    Map<String, Map<String, dynamic>> tempData = {};
+
+    for (var data in weatherData) {
+      tempData[data['category']] = data;
+    }
+
+    latestWeatherData = {
+      'temperature': tempData.containsKey('TMP')
+          ? '온도: ${tempData['TMP']!['fcstValue']}°C'
+          : '온도: 정보 없음',
+      'skyStatus': getSkyStatus(tempData['SKY']?['fcstValue']),
+      'humidity': tempData.containsKey('REH')
+          ? '습도: ${tempData['REH']!['fcstValue']}%'
+          : '습도: 정보 없음',
+      'windDirection': getWindDirection(tempData['VEC']?['fcstValue']),
+      'windSpeed': tempData.containsKey('WSD')
+          ? '풍속: ${tempData['WSD']!['fcstValue']}m/s'
+          : '풍속: 정보 없음',
+    };
+  }
+
+  String getSkyStatus(String? skyCode) {
+    switch (skyCode) {
+      case '1':
+        return '맑음';
+      case '3':
+        return '구름 많음';
+      case '4':
+        return '흐림';
+      default:
+        return '알 수 없음';
     }
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020, 1),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null && picked != _selectedDate) {
-      _selectedDate = picked;
-      await updateWeatherData();
-    }
+  String getWindDirection(dynamic vec) {
+    if (vec == null) return '방향 정보 없음';
+    double? angle = (vec is String) ? double.tryParse(vec) : vec as double?;
+    if (angle == null) return '방향 정보 없음';
+    return [
+      '북풍',
+      '북동풍',
+      '동풍',
+      '남동풍',
+      '남풍',
+      '남서풍',
+      '서풍',
+      '북서풍'
+    ][(angle / 45).floor() % 8];
   }
 
-  Future<void> updateWeatherData() async {
-    var data =
-        await weatherService.fetchWeatherData(_selectedTime, _selectedDate);
-    setState(() {
-      _selectedWeatherData.clear();
-      _selectedWeatherData.addAll(data);
-    });
+  Widget getWindDirectionWidget(double? vec) {
+    if (vec == null) return const Text('방향 정보 없음');
+    return Transform.rotate(
+      angle: -vec * math.pi / 180,
+      child: const Icon(Icons.arrow_upward),
+    );
+  }
+
+  bool isNumeric(String s) {
+    return double.tryParse(s) != null;
+  }
+
+  updateWeatherData() {
+    fetchWeather();
+  }
+
+  Widget getVECValueWidget() {
+    var vec = latestWeatherData['windDirection'];
+    if (vec == null) return const Text('VEC: 정보 없음');
+    return Text('VEC: $vec');
   }
 
   @override
   Widget build(BuildContext context) {
-    // 날씨 데이터를 시간별로 그룹화
-    var groupedWeatherData = <String, List<Map<String, dynamic>>>{};
-    for (var item in weatherData) {
-      if (!groupedWeatherData.containsKey(item['baseTime'])) {
-        groupedWeatherData[item['baseTime']] = [];
-      }
-      groupedWeatherData[item['baseTime']]?.add(item);
-    }
-
+    double? vec = double.tryParse(latestWeatherData['windDirection'] ?? '0');
     return Scaffold(
       appBar: AppBar(
-        title: const Text('날씨 정보'),
-      ),
-      body: Column(
-        children: <Widget>[
-          if (weatherDataMessage.isNotEmpty)
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: <Widget>[
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 20),
-                  Text(weatherDataMessage),
-                ],
-              ),
-            ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: <Widget>[
-              Text(
-                'Selected time: ${_selectedTime.format(context)}',
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  await _selectDate(context);
-                  var data = await weatherService.fetchWeatherData(
-                      _selectedTime, _selectedDate);
-                  setState(() {
-                    weatherData = data;
-                  });
-                },
-                child: const Text('Select date'),
-              ),
-              ElevatedButton(
-                onPressed: () => _selectTime(context),
-                child: const Text('Select time'),
-              ),
-            ],
+        title: const Text('통합 날씨 정보'),
+        actions: <Widget>[
+          IconButton(
+            icon: const Icon(Icons.date_range),
+            onPressed: () async {
+              final date = await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2050),
+              );
+              if (date != null) {
+                _selectedDate = date;
+                updateWeatherData();
+              }
+            },
           ),
-          Expanded(
-            child: weatherCard(_selectedWeatherData),
-          )
+          IconButton(
+            icon: const Icon(Icons.access_time),
+            onPressed: () async {
+              final time = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay.now(),
+              );
+              if (time != null) {
+                _selectedTime = time;
+                updateWeatherData();
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.alarm),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const AlarmSettingPage()),
+              );
+            },
+          ),
         ],
       ),
-    );
-  }
-
-  ListView weatherCard(List<Map<String, dynamic>> selectedWeatherData) {
-    return ListView.builder(
-      itemCount: selectedWeatherData.length,
-      itemBuilder: (context, index) {
-        selectedWeatherData[index];
-        double? uuu, vvv, windSpeed;
-        String? temperature, windDirection, humidity, skyStatus = '알 수 없음';
-        Icon? weatherIcon;
-        String rainfall = '강수량: 없음';
-        String snowfall = '적설량: 없음';
-
-        // 데이터 분석 및 처리
-        for (var data in selectedWeatherData) {
-          switch (data['category']) {
-            case 'UUU':
-              uuu = double.tryParse(data['fcstValue'] ?? '0');
-              break;
-            case 'VVV':
-              vvv = double.tryParse(data['fcstValue'] ?? '0');
-              break;
-            case 'TMP':
-              temperature = '온도: ${data['fcstValue']}℃';
-              break;
-            case 'REH':
-              humidity = '습도: ${data['fcstValue']}%';
-              break;
-            case 'SKY':
-              switch (data['fcstValue']) {
-                case '1':
-                  skyStatus = '하늘 상태: 맑음';
-                  weatherIcon = const Icon(Icons.wb_sunny);
-                  break;
-                case '3':
-                  skyStatus = '하늘 상태: 구름많음';
-                  weatherIcon = const Icon(Icons.cloud);
-                  break;
-                case '4':
-                  skyStatus = '하늘 상태: 흐림';
-                  weatherIcon = const Icon(Icons.cloud_off);
-                  break;
-                default:
-                  skyStatus = '하늘 상태: 알 수 없음';
-                  weatherIcon = const Icon(Icons.error);
-              }
-              break;
-            case 'PCP':
-              if (data['fcstValue'] != '강수없음') {
-                rainfall = '강수량: ${data['fcstValue']}mm';
-              }
-              break;
-            case 'SNO':
-              if (data['fcstValue'] != '적설없음') {
-                snowfall = '적설량: ${data['fcstValue']}cm';
-              }
-              break;
-          }
-
-          // 풍속 및 풍향 계산
-          if (uuu != null && vvv != null) {
-            windSpeed = sqrt(pow(uuu, 2) + pow(vvv, 2));
-            double angle = atan2(vvv, uuu) * 180 / pi;
-            if (angle < 0) angle += 360;
-            windDirection = [
-              '북풍',
-              '북동풍',
-              '동풍',
-              '남동풍',
-              '남풍',
-              '남서풍',
-              '서풍',
-              '북서풍'
-            ][(angle / 45).floor() % 8];
-          }
-        }
-
-        // 위젯 리스트 구성
-        List<Widget> children = [
-          if (skyStatus != null && skyStatus.isNotEmpty) Text(skyStatus),
-          if (weatherIcon != null) weatherIcon,
-          if (temperature != null)
-            Text(temperature, style: const TextStyle(fontSize: 24)),
-          if (windDirection != null && windSpeed != null)
-            Text('풍향: $windDirection, 풍속: ${windSpeed.toStringAsFixed(1)}m/s'),
-          if (humidity != null) Text(humidity),
-          if (rainfall != '강수량: 없음') Text(rainfall),
-          if (snowfall != '적설량: 없음') Text(snowfall)
-        ];
-
-        return Card(
-          child: ListTile(
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: children,
+      body: Center(
+        child: Column(
+          children: [
+            weatherDataMessage.isNotEmpty
+                ? Text(weatherDataMessage)
+                : Card(
+                    child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(latestWeatherData['temperature'] ??
+                                '온도: 정보 없음'),
+                            Text(latestWeatherData['skyStatus'] ??
+                                '하늘 상태: 정보 없음'),
+                            Text(latestWeatherData['humidity'] ?? '습도: 정보 없음'),
+                            Text(
+                                '풍향: ${latestWeatherData['windDirection'] ?? '정보 없음'}'),
+                            getWindDirectionWidget(vec),
+                            Text(latestWeatherData['windSpeed'] ?? '풍속: 정보 없음'),
+                          ],
+                        )),
+                  ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: alarms.length,
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    title: Text('알람 시간: ${alarms[index].time.format(context)}'),
+                  );
+                },
+              ),
             ),
-          ),
-        );
-      },
+            ListView.builder(
+              shrinkWrap: true,
+              itemCount: alarms.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text('알람: ${alarms[index].time.format(context)}'),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
+}
+
+class Alarm {
+  final TimeOfDay time;
+
+  Alarm(this.time);
 }
