@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_voice_alarm/alarm_info.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'weather_service.dart';
+import 'vworld_address.dart';
 
 Future main() async {
   await dotenv.load();
@@ -35,6 +37,7 @@ class WeatherScreenState extends State<WeatherScreen> {
   List<AlarmInfo> alarms = [];
   int nx = 0;
   int ny = 0;
+  String _address = 'Loading address...';
 
   @override
   void initState() {
@@ -131,12 +134,36 @@ class WeatherScreenState extends State<WeatherScreen> {
 
   Future<void> updateWeatherData() async {
     await fetchWeather();
+    await getPositionAndAddress();
   }
 
   Widget getVECValueWidget() {
     var vec = latestWeatherData['windDirection'];
     if (vec == null) return const Text('VEC: 정보 없음');
     return Text('VEC: $vec');
+  }
+
+  Future<void> getPositionAndAddress() async {
+    try {
+      Position? position = await Geolocator.getLastKnownPosition();
+      position ??= await Geolocator.getCurrentPosition();
+      print('Position: $position'); // 위치 정보를 콘솔에 출력합니다.
+      await getAddressFromCoordinates(position); // 'await' 키워드를 추가합니다.
+    } catch (e) {
+      print('Failed to get location: $e'); // 오류 메시지를 콘솔에 출력합니다.
+      setState(() {
+        _address = 'Failed to get location: $e';
+      });
+    }
+  }
+
+  Future<void> getAddressFromCoordinates(Position position) async {
+    VWorldAddressService addressService = VWorldAddressService();
+    String address = await addressService.getAddressFromCoordinates(position);
+    print('Address: $address'); // 주소를 콘솔에 출력합니다.
+    setState(() {
+      _address = address;
+    });
   }
 
   @override
@@ -186,6 +213,10 @@ class WeatherScreenState extends State<WeatherScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  _address,
+                  style: const TextStyle(fontSize: 24),
+                ),
                 Text(weatherDataMessage),
                 Text(latestWeatherData['temperature'] ?? '온도: 정보 없음'),
                 Text(latestWeatherData['skyStatus'] ?? '하늘 상태: 정보 없음'),

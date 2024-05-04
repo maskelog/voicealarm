@@ -64,7 +64,7 @@ class WeatherService {
         formatTime(closestTime),
       );
 
-      print('Weather data: $weatherData'); // JSON 데이터 출력
+      // print('Weather data: $weatherData'); // JSON 데이터 출력
 
       return List<Map<String, dynamic>>.from(
           weatherData.values.expand((item) => item).toList());

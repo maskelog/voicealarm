@@ -54,7 +54,7 @@ class _AddressFinderState extends State<AddressFinder> {
     }
   }
 
-  Future<void> getAddressFromCoordinates(Position position) async {
+  Future<String> getAddressFromCoordinates(Position position) async {
     String apiKey = dotenv.env['VWORLDKEY']!;
     Map<String, String> params = {
       'key': apiKey,
@@ -80,21 +80,16 @@ class _AddressFinderState extends State<AddressFinder> {
       var responseResult = jsonResponse['response']['result'];
       if (responseResult != null && responseResult.isNotEmpty) {
         var addressText = responseResult[0]['text'];
-        setState(() {
-          _address = addressText ?? 'No address found';
-        });
+        _address = addressText ?? 'No address found';
       } else {
         print('Response result is empty or null: $jsonResponse');
-        setState(() {
-          _address = 'No address found';
-        });
+        _address = 'No address found';
       }
     } else {
       print('Failed to fetch address. Status code: ${response.statusCode}');
-      setState(() {
-        _address = 'Failed to fetch address';
-      });
+      _address = 'Failed to fetch address';
     }
+    return _address;
   }
 
   @override
