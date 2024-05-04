@@ -10,6 +10,9 @@ class WeatherService {
       "https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst";
   final String apiKey = dotenv.env['APIHUB']!;
 
+  int weatherNx = 0;
+  int weatherNy = 0;
+
   Future<Map<String, dynamic>> fetchWeather(
       int nx, int ny, String baseDate, String baseTime) async {
     final response = await http.get(
@@ -50,9 +53,13 @@ class WeatherService {
       }
 
       var closestTime = TimeOfDay(hour: closestHour, minute: 0);
+
+      weatherNx = position.latitude.toInt();
+      weatherNy = position.longitude.toInt();
+
       var weatherData = await fetchWeather(
-        position.latitude.toInt(),
-        position.longitude.toInt(),
+        weatherNx,
+        weatherNy,
         formatDate(selectedDate),
         formatTime(closestTime),
       );

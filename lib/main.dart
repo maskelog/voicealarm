@@ -33,6 +33,8 @@ class WeatherScreenState extends State<WeatherScreen> {
   Map<String, dynamic> latestWeatherData = {};
   String weatherDataMessage = "날씨 정보를 불러오는 중...";
   List<AlarmInfo> alarms = [];
+  int nx = 0;
+  int ny = 0;
 
   @override
   void initState() {
@@ -127,8 +129,8 @@ class WeatherScreenState extends State<WeatherScreen> {
     return double.tryParse(s) != null;
   }
 
-  updateWeatherData() {
-    fetchWeather();
+  Future<void> updateWeatherData() async {
+    await fetchWeather();
   }
 
   Widget getVECValueWidget() {
@@ -198,14 +200,45 @@ class WeatherScreenState extends State<WeatherScreen> {
               itemCount: alarms.length,
               itemBuilder: (context, index) {
                 final alarm = alarms[index];
+
+                List<String> repeatingDays = alarm.repeatDays.entries
+                    .where((entry) => entry.value)
+                    .map((entry) => entry.key)
+                    .toList();
                 return ListTile(
-                  title:
-                      Text('알람: ${alarm.time.format(context)} - ${alarm.name}'),
-                  subtitle: Text('Enabled: ${alarm.isEnabled}'),
+                  title: Text(
+                    '${alarm.name} ${alarm.time.format(context)}',
+                    style: TextStyle(
+                      color: alarm.isEnabled ? Colors.black : Colors.grey,
+                    ),
+                  ),
+                  subtitle: RichText(
+                    text: TextSpan(
+                      children: repeatingDays.map((day) {
+                        return TextSpan(
+                          text: '$day ',
+                          style: TextStyle(
+                            color: (day == '토' || day == '일')
+                                ? (alarm.isEnabled
+                                    ? Colors.red
+                                    : Colors.red[200])
+                                : (alarm.isEnabled
+                                    ? Colors.black
+                                    : Colors.grey),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
                   trailing: IconButton(
                     icon: const Icon(Icons.edit),
                     onPressed: () => showEditAlarmDialog(alarm, index),
                   ),
+                  onTap: () {
+                    setState(() {
+                      alarm.isEnabled = !alarm.isEnabled;
+                    });
+                  },
                 );
               },
             ),
@@ -225,7 +258,7 @@ class WeatherScreenState extends State<WeatherScreen> {
         TextEditingController(text: alarm.name);
     TimeOfDay selectedTime = alarm.time;
     DateTime selectedDate = alarm.date;
-    List<String> daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    List<String> daysOfWeek = ["월", "화", "수", "목", "금", "토", "일"];
 
     // 기존 알람의 반복 요일 상태를 가져와서 복사합니다.
     List<bool> selectedDays =
@@ -280,24 +313,29 @@ class WeatherScreenState extends State<WeatherScreen> {
                     ),
                     Wrap(
                       spacing: 8.0,
-                      children:
-                          List<Widget>.generate(daysOfWeek.length, (int index) {
-                        return ChoiceChip(
-                          label: Text(daysOfWeek[index]),
-                          selected: selectedDays[index],
-                          onSelected: (bool selected) {
-                            setStateDialog(() {
-                              selectedDays[index] = selected;
-                            });
-                          },
-                          selectedColor: Colors.blue,
-                          backgroundColor: Colors.grey,
-                          labelStyle: TextStyle(
+                      children: List<Widget>.generate(
+                        daysOfWeek.length,
+                        (int index) {
+                          return ChoiceChip(
+                            label: Text(daysOfWeek[index]),
+                            selected: selectedDays[index],
+                            onSelected: (bool selected) {
+                              setStateDialog(() {
+                                selectedDays[index] = selected;
+                              });
+                            },
+                            selectedColor: (index == 5 || index == 6)
+                                ? Colors.red
+                                : Colors.blue,
+                            backgroundColor: Colors.grey,
+                            labelStyle: TextStyle(
                               color: selectedDays[index]
                                   ? Colors.white
-                                  : Colors.black),
-                        );
-                      }),
+                                  : Colors.black,
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -414,19 +452,23 @@ class WeatherScreenState extends State<WeatherScreen> {
                     daysOfWeek[i]: selectedDays[i]
                 };
 
-                setState(() {
-                  // 알람 정보 객체를 생성하고 리스트에 추가합니다.
-                  alarms.add(AlarmInfo(
-                      time: selectedTime,
-                      date: selectedDate,
-                      repeatDays: daysMap,
-                      isEnabled: true,
-                      sound: 'default_sound.mp3',
-                      name: nameController.text.trim(),
-                      nx: 0, // 임시 좌표 값
-                      ny: 0 // 임시 좌표 값
-                      ));
-                });
+                setState(
+                  () {
+                    // 알람 정보 객체를 생성하고 리스트에 추가합니다.
+                    alarms.add(
+                      AlarmInfo(
+                        time: selectedTime,
+                        date: selectedDate,
+                        repeatDays: daysMap,
+                        isEnabled: true,
+                        sound: 'default_sound.mp3',
+                        name: nameController.text.trim(),
+                        nx: weatherService.weatherNx,
+                        ny: weatherService.weatherNy,
+                      ),
+                    );
+                  },
+                );
                 Navigator.of(context).pop();
               },
               style: TextButton.styleFrom(
