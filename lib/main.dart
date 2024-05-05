@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_voice_alarm/alarm_info.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import 'package:weather_icons/weather_icons.dart';
 import 'weather_service.dart';
 import 'vworld_address.dart';
 
@@ -326,7 +327,11 @@ class WeatherScreenState extends State<WeatherScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+<<<<<<< HEAD
                     // Text(weatherDataMessage),
+=======
+                    Text(weatherDataMessage),
+>>>>>>> 02c5c32 (날씨 데이터 시간별 그룹화 기능 수정, 강수량 및 적설량 표시 추가)
                     Text(
                       latestWeatherData['temperature'] ?? '온도: 정보 없음',
                       style: const TextStyle(fontSize: 20),
@@ -334,9 +339,12 @@ class WeatherScreenState extends State<WeatherScreen> {
                     Text(latestWeatherData['skyStatus'] ?? '하늘 상태: 정보 없음'),
                     Text(latestWeatherData['humidity'] ?? '습도: 정보 없음'),
                     Text(latestWeatherData['windDirection'] ?? '풍향: 정보 없음'),
+<<<<<<< HEAD
                     Text(
                       latestWeatherData['windDirection'] ?? '풍향: 정보 없음',
                     ),
+=======
+>>>>>>> 02c5c32 (날씨 데이터 시간별 그룹화 기능 수정, 강수량 및 적설량 표시 추가)
                     Text(latestWeatherData['windSpeed'] ?? '풍속: 정보 없음'),
                     Text(latestWeatherData['precipitationType'] ?? '정보 없음'),
                     if (latestWeatherData['snowfall'] != '적설없음')
@@ -405,6 +413,7 @@ class WeatherScreenState extends State<WeatherScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(50),
               ),
+<<<<<<< HEAD
               child: Row(
                 children: [
                   Icon(
@@ -420,6 +429,14 @@ class WeatherScreenState extends State<WeatherScreen> {
                     size: 150,
                   ),
                 ],
+=======
+              child: Icon(
+                getWeatherIcon(
+                  int.tryParse(latestWeatherData['pty'] ?? '0'),
+                  latestWeatherData['skyStatus'] ?? '0',
+                ),
+                size: 150,
+>>>>>>> 02c5c32 (날씨 데이터 시간별 그룹화 기능 수정, 강수량 및 적설량 표시 추가)
               ),
             ),
           ),
