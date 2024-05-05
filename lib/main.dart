@@ -1,9 +1,12 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_voice_alarm/alarm_info.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import 'package:weather_icons/weather_icons.dart';
 import 'weather_service.dart';
 import 'vworld_address.dart';
 
@@ -88,6 +91,16 @@ class WeatherScreenState extends State<WeatherScreen> {
       'windSpeed': tempData.containsKey('WSD')
           ? '풍속: ${tempData['WSD']!['fcstValue']}m/s'
           : '풍속: 정보 없음',
+      'precipitationType': getPrecipitationType(tempData['PTY']!['fcstValue']),
+      'precipitationProbability': tempData.containsKey('POP')
+          ? '강수유무: ${tempData['POP']!['fcstValue']}%'
+          : '강수유무: 정보 없음',
+      'precipitationAmount': tempData.containsKey('PCP')
+          ? '1시간 강수량: ${tempData['PCP']!['fcstValue']}mm'
+          : '1시간 강수량: 정보 없음',
+      'snowfall': tempData.containsKey('SNO')
+          ? '1시간 신적설: ${tempData['SNO']!['fcstValue']}cm'
+          : '1시간 신적설: 정보 없음',
     };
   }
 
@@ -101,6 +114,44 @@ class WeatherScreenState extends State<WeatherScreen> {
         return '흐림';
       default:
         return '알 수 없음';
+    }
+  }
+
+  IconData getWeatherIcon(
+    int? pty,
+    String? sky,
+  ) {
+    print('pty: $pty, sky: $sky');
+
+    pty = pty ?? 0;
+    sky = sky ?? '0';
+
+    if (pty != 0) {
+      switch (pty) {
+        case 1:
+          return WeatherIcons.rain; // 비
+        case 2:
+          return WeatherIcons.rain_mix; // 비/눈
+        case 3:
+          return WeatherIcons.snow_wind; // 눈/비
+        case 4:
+          return WeatherIcons.snow; // 눈
+        default:
+          return WeatherIcons.alien; // 알 수 없음
+      }
+    } else {
+      switch (sky) {
+        case '맑음':
+          return WeatherIcons.day_sunny;
+        case '구름조금':
+          return WeatherIcons.day_cloudy_high;
+        case '구름많음':
+          return WeatherIcons.day_cloudy;
+        case '흐림':
+          return WeatherIcons.cloudy;
+        default:
+          return WeatherIcons.alien; // 알 수 없음
+      }
     }
   }
 
@@ -141,6 +192,23 @@ class WeatherScreenState extends State<WeatherScreen> {
     var vec = latestWeatherData['windDirection'];
     if (vec == null) return const Text('VEC: 정보 없음');
     return Text('VEC: $vec');
+  }
+
+  String getPrecipitationType(String? pty) {
+    switch (pty) {
+      case '0':
+        return '강수형태: 없음';
+      case '1':
+        return '강수형태: 비';
+      case '2':
+        return '강수형태: 비/눈';
+      case '3':
+        return '강수형태: 눈/비';
+      case '4':
+        return '강수형태: 눈';
+      default:
+        return '강수형태: 정보 없음';
+    }
   }
 
   Future<void> getPositionAndAddress() async {
@@ -206,72 +274,98 @@ class WeatherScreenState extends State<WeatherScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _address,
-                  style: const TextStyle(fontSize: 24),
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(weatherDataMessage),
+                    Text(
+                      latestWeatherData['temperature'] ?? '온도: 정보 없음',
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                    Text(latestWeatherData['skyStatus'] ?? '하늘 상태: 정보 없음'),
+                    Text(latestWeatherData['humidity'] ?? '습도: 정보 없음'),
+                    Text(latestWeatherData['windDirection'] ?? '풍향: 정보 없음'),
+                    Text(latestWeatherData['windSpeed'] ?? '풍속: 정보 없음'),
+                    Text(latestWeatherData['precipitationType'] ?? '정보 없음'),
+                    if (latestWeatherData['snowfall'] != '적설없음')
+                      Text(latestWeatherData['snowfall'] ?? '1시간 신적설: 정보 없음'),
+                    Text(
+                      _address,
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                  ],
                 ),
-                Text(weatherDataMessage),
-                Text(latestWeatherData['temperature'] ?? '온도: 정보 없음'),
-                Text(latestWeatherData['skyStatus'] ?? '하늘 상태: 정보 없음'),
-                Text(latestWeatherData['humidity'] ?? '습도: 정보 없음'),
-                Text(latestWeatherData['windDirection'] ?? '풍향: 정보 없음'),
-                Text(latestWeatherData['windSpeed'] ?? '풍속: 정보 없음'),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: alarms.length,
-              itemBuilder: (context, index) {
-                final alarm = alarms[index];
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: alarms.length,
+                  itemBuilder: (context, index) {
+                    final alarm = alarms[index];
 
-                List<String> repeatingDays = alarm.repeatDays.entries
-                    .where((entry) => entry.value)
-                    .map((entry) => entry.key)
-                    .toList();
-                return ListTile(
-                  title: Text(
-                    '${alarm.name} ${alarm.time.format(context)}',
-                    style: TextStyle(
-                      color: alarm.isEnabled ? Colors.black : Colors.grey,
-                    ),
-                  ),
-                  subtitle: RichText(
-                    text: TextSpan(
-                      children: repeatingDays.map((day) {
-                        return TextSpan(
-                          text: '$day ',
-                          style: TextStyle(
-                            color: (day == '토' || day == '일')
-                                ? (alarm.isEnabled
-                                    ? Colors.red
-                                    : Colors.red[200])
-                                : (alarm.isEnabled
-                                    ? Colors.black
-                                    : Colors.grey),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.edit),
-                    onPressed: () => showEditAlarmDialog(alarm, index),
-                  ),
-                  onTap: () {
-                    setState(() {
-                      alarm.isEnabled = !alarm.isEnabled;
-                    });
+                    List<String> repeatingDays = alarm.repeatDays.entries
+                        .where((entry) => entry.value)
+                        .map((entry) => entry.key)
+                        .toList();
+                    return ListTile(
+                      title: Text(
+                        '${alarm.name} ${alarm.time.format(context)}',
+                        style: TextStyle(
+                          color: alarm.isEnabled ? Colors.black : Colors.grey,
+                        ),
+                      ),
+                      subtitle: RichText(
+                        text: TextSpan(
+                          children: repeatingDays.map((day) {
+                            return TextSpan(
+                              text: '$day ',
+                              style: TextStyle(
+                                color: (day == '토' || day == '일')
+                                    ? (alarm.isEnabled
+                                        ? Colors.red
+                                        : Colors.red[200])
+                                    : (alarm.isEnabled
+                                        ? Colors.black
+                                        : Colors.grey),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () => showEditAlarmDialog(alarm, index),
+                      ),
+                      onTap: () {
+                        setState(() {
+                          alarm.isEnabled = !alarm.isEnabled;
+                        });
+                      },
+                    );
                   },
-                );
-              },
+                ),
+              ),
+            ],
+          ),
+          Positioned(
+            right: 50,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: Icon(
+                getWeatherIcon(
+                  int.tryParse(latestWeatherData['pty'] ?? '0'),
+                  latestWeatherData['skyStatus'] ?? '0',
+                ),
+                size: 150,
+              ),
             ),
           ),
         ],
