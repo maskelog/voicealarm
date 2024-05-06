@@ -6,9 +6,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_voice_alarm/alarm_info.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
-import 'package:weather_icons/weather_icons.dart';
 import 'weather_service.dart';
 import 'vworld_address.dart';
+
+import 'package:weather_icons/weather_icons.dart';
 
 Future main() async {
   await dotenv.load();
@@ -171,6 +172,48 @@ class WeatherScreenState extends State<WeatherScreen> {
     ][(angle / 45).floor() % 8];
   }
 
+  IconData getWindDirectionIcon(int? degree) {
+    degree = degree ?? 0;
+
+    if (degree < 0 || degree > 360) {
+      return WeatherIcons.alien; // 알 수 없음
+    }
+
+    if (degree <= 11.25 || degree > 348.75) {
+      return WeatherIcons.direction_up; // 북
+    } else if (degree <= 33.75) {
+      return WeatherIcons.direction_up_right; // 북북동
+    } else if (degree <= 56.25) {
+      return WeatherIcons.direction_right; // 북동
+    } else if (degree <= 78.75) {
+      return WeatherIcons.direction_down_right; // 동북동
+    } else if (degree <= 101.25) {
+      return WeatherIcons.direction_down; // 동
+    } else if (degree <= 123.75) {
+      return WeatherIcons.direction_down_left; // 동남동
+    } else if (degree <= 146.25) {
+      return WeatherIcons.direction_left; // 남동
+    } else if (degree <= 168.75) {
+      return WeatherIcons.direction_up_left; // 남남동
+    } else if (degree <= 191.25) {
+      return WeatherIcons.direction_up; // 남
+    } else if (degree <= 213.75) {
+      return WeatherIcons.direction_up_right; // 남남서
+    } else if (degree <= 236.25) {
+      return WeatherIcons.direction_right; // 남서
+    } else if (degree <= 258.75) {
+      return WeatherIcons.direction_down_right; // 서남서
+    } else if (degree <= 281.25) {
+      return WeatherIcons.direction_down; // 서
+    } else if (degree <= 303.75) {
+      return WeatherIcons.direction_down_left; // 서북서
+    } else if (degree <= 326.25) {
+      return WeatherIcons.direction_left; // 북서
+    } else {
+      return WeatherIcons.direction_up_left; // 북북서
+    }
+  }
+
   Widget getWindDirectionWidget(double? vec) {
     if (vec == null) return const Text('방향 정보 없음');
     return Transform.rotate(
@@ -283,7 +326,7 @@ class WeatherScreenState extends State<WeatherScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(weatherDataMessage),
+                    // Text(weatherDataMessage),
                     Text(
                       latestWeatherData['temperature'] ?? '온도: 정보 없음',
                       style: const TextStyle(fontSize: 20),
@@ -291,6 +334,9 @@ class WeatherScreenState extends State<WeatherScreen> {
                     Text(latestWeatherData['skyStatus'] ?? '하늘 상태: 정보 없음'),
                     Text(latestWeatherData['humidity'] ?? '습도: 정보 없음'),
                     Text(latestWeatherData['windDirection'] ?? '풍향: 정보 없음'),
+                    Text(
+                      latestWeatherData['windDirection'] ?? '풍향: 정보 없음',
+                    ),
                     Text(latestWeatherData['windSpeed'] ?? '풍속: 정보 없음'),
                     Text(latestWeatherData['precipitationType'] ?? '정보 없음'),
                     if (latestWeatherData['snowfall'] != '적설없음')
@@ -359,12 +405,21 @@ class WeatherScreenState extends State<WeatherScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(50),
               ),
-              child: Icon(
-                getWeatherIcon(
-                  int.tryParse(latestWeatherData['pty'] ?? '0'),
-                  latestWeatherData['skyStatus'] ?? '0',
-                ),
-                size: 150,
+              child: Row(
+                children: [
+                  Icon(
+                    getWindDirectionIcon(int.tryParse(
+                        latestWeatherData['windDirection'] ?? '0')),
+                    size: 40,
+                  ),
+                  Icon(
+                    getWeatherIcon(
+                      int.tryParse(latestWeatherData['pty'] ?? '0'),
+                      latestWeatherData['skyStatus'] ?? '0',
+                    ),
+                    size: 150,
+                  ),
+                ],
               ),
             ),
           ),
