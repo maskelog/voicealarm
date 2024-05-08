@@ -6,13 +6,7 @@ class Alarm {
   List<bool> days;
   bool isEnabled;
 
-  Alarm(this.time, this.date, this.days, this.isEnabled,
-      {required TimeOfDay time,
-      required DateTime date,
-      required Map<String, bool> repeatDays,
-      required bool isEnabled,
-      required String sound,
-      required String name});
+  Alarm(this.time, this.date, this.days, this.isEnabled);
 }
 
 // 알람 설정 페이지
@@ -94,8 +88,8 @@ class AlarmSettingPageState extends State<AlarmSettingPage> {
             child: const Text('알람 설정'),
             onPressed: () {
               setState(() {
-                widget.alarms.add(
-                    Alarm(_selectedTime, _selectedDate, _selectedDays, true));
+                widget.alarms.add(Alarm(
+                    _selectedTime, _selectedDate, _selectedDays, _isEnabled));
               });
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
