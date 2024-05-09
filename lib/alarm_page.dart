@@ -24,6 +24,7 @@ class AlarmSettingPageState extends State<AlarmSettingPage> {
   TimeOfDay _selectedTime = TimeOfDay.now();
   DateTime _selectedDate = DateTime.now();
   final List<bool> _selectedDays = List.generate(7, (index) => false);
+  late bool _isEnabled;
 
   @override
   Widget build(BuildContext context) {

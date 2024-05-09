@@ -33,16 +33,9 @@ class WeatherScreenState extends State<WeatherScreen> {
   Map<String, dynamic> latestWeatherData = {};
   String weatherDataMessage = "날씨 정보를 불러오는 중...";
   List<Alarm> alarms = [];
-  final List<bool> _selectedDays = [
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false
-  ];
+  final List<bool> _selectedDays = List.generate(7, (index) => false);
   final bool _isEnabled = true;
+
   @override
   void initState() {
     super.initState();
