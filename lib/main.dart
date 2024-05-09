@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_voice_alarm/alarm_page.dart';
+import 'package:flutter_voice_alarm/alarm_info.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:intl/intl.dart';
 import 'weather_service.dart';
+import 'vworld_address.dart';
+
+import 'package:weather_icons/weather_icons.dart';
 
 Future main() async {
   await dotenv.load();
@@ -14,15 +19,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       home: WeatherScreen(),
     );
   }
 }
 
 class WeatherScreen extends StatefulWidget {
-  WeatherScreen({super.key});
-  final List<Alarm> alarms = [];
+  const WeatherScreen({super.key});
 
   @override
   WeatherScreenState createState() => WeatherScreenState();
@@ -32,14 +36,21 @@ class WeatherScreenState extends State<WeatherScreen> {
   WeatherService weatherService = WeatherService();
   Map<String, dynamic> latestWeatherData = {};
   String weatherDataMessage = "날씨 정보를 불러오는 중...";
-  List<Alarm> alarms = [];
-  final List<bool> _selectedDays = List.generate(7, (index) => false);
-  final bool _isEnabled = true;
+  List<AlarmInfo> alarms = [];
+  int nx = 0;
+  int ny = 0;
+  String _address = 'Loading address...';
 
   @override
   void initState() {
     super.initState();
     fetchWeather();
+    loadAlarms();
+  }
+
+  void loadAlarms() {
+    // 이 함수는 알람 데이터를 로드하는 로직을 구현해야 함
+    // 예: alarms = await alarmStorage.getAlarms();
   }
 
   fetchWeather() async {
@@ -64,36 +75,29 @@ class WeatherScreenState extends State<WeatherScreen> {
     Map<String, Map<String, dynamic>> tempData = {};
 
     for (var data in weatherData) {
-      if (!tempData.containsKey(data['category'])) {
-        tempData[data['category']] = {};
-      }
       tempData[data['category']] = data;
     }
-    var vecData = tempData.containsKey('VEC') ? tempData['VEC'] : null;
-    var windDirectionValue = vecData != null ? vecData['fcstValue'] : null;
+
     latestWeatherData = {
       'temperature': tempData.containsKey('TMP')
-          ? '온도: ${tempData['TMP']?['fcstValue']}°C'
+          ? '온도: ${tempData['TMP']!['fcstValue']}°C'
           : '온도: 정보 없음',
       'skyStatus': getSkyStatus(tempData['SKY']?['fcstValue']),
       'humidity': tempData.containsKey('REH')
-          ? '습도: ${tempData['REH']?['fcstValue']}%'
+          ? '습도: ${tempData['REH']!['fcstValue']}%'
           : '습도: 정보 없음',
-      'windDirection': tempData.containsKey('VEC')
-          ? getWindDirection(tempData['VEC']?['fcstValue'])
-          : '방향 정보 없음',
+      'windDirection': getWindDirection(tempData['VEC']?['fcstValue']),
+      'windDirectionValue': tempData['VEC']?['fcstValue'],
       'windSpeed': tempData.containsKey('WSD')
-          ? '풍속: ${tempData['WSD']?['fcstValue']}m/s'
+          ? '풍속: ${tempData['WSD']!['fcstValue']}m/s'
           : '풍속: 정보 없음',
-      'windDirectionValue': windDirectionValue,
-      'precipitationType': getPrecipitationType(tempData['PTY']?['fcstValue']),
+      'precipitationType': getPrecipitationType(tempData['PTY']!['fcstValue']),
       'precipitationProbability': tempData.containsKey('POP')
-          ? '${tempData['POP']?['fcstValue']}%'
-          : '강수 확률: 정보 없음',
-      'precipitationAmount': (tempData.containsKey('PCP') &&
-              tempData['PCP']?['fcstValue'] != "강수없음")
-          ? '${tempData['PCP']?['fcstValue']}mm'
-          : null,
+          ? '강수유무: ${tempData['POP']!['fcstValue']}%'
+          : '강수유무: 정보 없음',
+      'precipitationAmount': tempData.containsKey('PCP')
+          ? '1시간 강수량: ${tempData['PCP']!['fcstValue']}mm'
+          : '1시간 강수량: 정보 없음',
       'snowfallAmount': (tempData.containsKey('SNO') &&
               tempData['SNO']?['fcstValue'] != "적설없음")
           ? '${tempData['SNO']?['fcstValue']}cm'
@@ -114,20 +118,41 @@ class WeatherScreenState extends State<WeatherScreen> {
     }
   }
 
-  String getPrecipitationType(String? ptyCode) {
-    switch (ptyCode) {
-      case '0':
-        return '없음';
-      case '1':
-        return '비';
-      case '2':
-        return '비/눈';
-      case '3':
-        return '눈/비';
-      case '4':
-        return '눈';
-      default:
-        return '알 수 없음';
+  IconData getWeatherIcon(
+    int? pty,
+    String? sky,
+  ) {
+    print('pty: $pty, sky: $sky');
+
+    pty = pty ?? 0;
+    sky = sky ?? '0';
+
+    if (pty != 0) {
+      switch (pty) {
+        case 1:
+          return WeatherIcons.rain; // 비
+        case 2:
+          return WeatherIcons.rain_mix; // 비/눈
+        case 3:
+          return WeatherIcons.snow_wind; // 눈/비
+        case 4:
+          return WeatherIcons.snow; // 눈
+        default:
+          return WeatherIcons.alien; // 알 수 없음
+      }
+    } else {
+      switch (sky) {
+        case '맑음':
+          return WeatherIcons.day_sunny;
+        case '구름조금':
+          return WeatherIcons.day_cloudy_high;
+        case '구름많음':
+          return WeatherIcons.day_cloudy;
+        case '흐림':
+          return WeatherIcons.cloudy;
+        default:
+          return WeatherIcons.alien; // 알 수 없음
+      }
     }
   }
 
@@ -135,6 +160,7 @@ class WeatherScreenState extends State<WeatherScreen> {
     if (vec == null) return '방향 정보 없음';
     double? angle = (vec is String) ? double.tryParse(vec) : vec as double?;
     if (angle == null) return '방향 정보 없음';
+    // 북쪽을 기준으로 하는 방향을 반환
     return [
       '북풍',
       '북동풍',
@@ -147,22 +173,15 @@ class WeatherScreenState extends State<WeatherScreen> {
     ][((angle + 22.5) % 360 / 45).floor() % 8];
   }
 
-  Widget getWindDirectionWidget(dynamic vecValue) {
-    if (vecValue == null) return const Text('방향 정보 없음');
-    double? angle;
-    if (vecValue is String) {
-      angle = double.tryParse(vecValue);
-    } else if (vecValue is int) {
-      angle = vecValue.toDouble();
-    } else if (vecValue is double) {
-      angle = vecValue;
-    }
+  Widget getWindDirectionWidget(String? vec) {
+    print('Wind direction value: $vec');
+    if (vec == null || !isNumeric(vec)) return const Text('방향 정보 없음');
+    double? angle = double.tryParse(vec);
     if (angle == null) return const Text('방향 정보 없음');
 
     // 화살표가 북쪽을 가리키도록 기본 설정하고, 각도만큼 회전
     return Transform.rotate(
-      angle:
-          (-angle + 90) * (math.pi / 180), // 각도를 라디안으로 변환, 90도 추가하여 북쪽 기준으로 조정
+      angle: -angle * (math.pi / 180), // 각도를 라디안으로 변환
       child: const Icon(Icons.arrow_upward_sharp, size: 24, color: Colors.blue),
     );
   }
@@ -171,33 +190,70 @@ class WeatherScreenState extends State<WeatherScreen> {
     return double.tryParse(s) != null;
   }
 
-  updateWeatherData() {
-    fetchWeather();
+  Future<void> updateWeatherData() async {
+    await fetchWeather();
+    await getPositionAndAddress();
   }
 
-  Widget getVECValueWidget() {
-    var vec = latestWeatherData['windDirection'];
-    if (vec == null) return const Text('VEC: 정보 없음');
-    return Text('VEC: $vec');
+  String getPrecipitationType(String? pty) {
+    switch (pty) {
+      case '0':
+        return '강수형태: 없음';
+      case '1':
+        return '강수형태: 비';
+      case '2':
+        return '강수형태: 비/눈';
+      case '3':
+        return '강수형태: 눈/비';
+      case '4':
+        return '강수형태: 눈';
+      default:
+        return '강수형태: 정보 없음';
+    }
+  }
+
+  Future<void> getPositionAndAddress() async {
+    try {
+      Position? position = await Geolocator.getLastKnownPosition();
+      position ??= await Geolocator.getCurrentPosition();
+      print('Position: $position'); // 위치 정보를 콘솔에 출력합니다.
+      await getAddressFromCoordinates(position); // 'await' 키워드를 추가합니다.
+    } catch (e) {
+      print('Failed to get location: $e'); // 오류 메시지를 콘솔에 출력합니다.
+      setState(() {
+        _address = 'Failed to get location: $e';
+      });
+    }
+  }
+
+  Future<void> getAddressFromCoordinates(Position position) async {
+    VWorldAddressService addressService = VWorldAddressService();
+    String address = await addressService.getAddressFromCoordinates(position);
+    print('Address: $address'); // 주소를 콘솔에 출력합니다.
+    setState(() {
+      _address = address;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('통합 날씨 정보'),
-        actions: <Widget>[
+        title: const Text('보이스 알람'),
+        actions: [
           IconButton(
             icon: const Icon(Icons.date_range),
             onPressed: () async {
-              final date = await showDatePicker(
+              final DateTime? date = await showDatePicker(
                 context: context,
                 initialDate: DateTime.now(),
                 firstDate: DateTime(2000),
                 lastDate: DateTime(2050),
               );
               if (date != null) {
-                _selectedDate = date;
+                setState(() {
+                  _selectedDate = date;
+                });
                 updateWeatherData();
               }
             },
@@ -205,99 +261,360 @@ class WeatherScreenState extends State<WeatherScreen> {
           IconButton(
             icon: const Icon(Icons.access_time),
             onPressed: () async {
-              final time = await showTimePicker(
+              final TimeOfDay? time = await showTimePicker(
                 context: context,
                 initialTime: TimeOfDay.now(),
               );
               if (time != null) {
-                _selectedTime = time;
+                setState(() {
+                  _selectedTime = time;
+                });
                 updateWeatherData();
               }
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.alarm),
-            onPressed: () {
-              setState(() {
-                widget.alarms.add(
-                  Alarm(
-                      _selectedTime, _selectedDate, _selectedDays, _isEnabled),
-                );
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('알람이 설정되었습니다.'),
-                ),
-              );
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AlarmSettingPage(alarms: widget.alarms),
-                ),
-              );
-            },
-          ),
         ],
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Column(
+      body: Stack(
+        children: [
+          Column(
             children: [
-              weatherDataMessage.isNotEmpty
-                  ? Text(weatherDataMessage)
-                  : Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(latestWeatherData['temperature'] ??
-                                '온도: 정보 없음'),
-                            Text(latestWeatherData['skyStatus'] ??
-                                '하늘 상태: 정보 없음'),
-                            Text(latestWeatherData['humidity'] ?? '습도: 정보 없음'),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: <Widget>[
-                                Text(
-                                    '${latestWeatherData['windDirection'] ?? '정보 없음'} ',
-                                    style: const TextStyle(fontSize: 16)),
-                                if (latestWeatherData['windDirectionValue'] !=
-                                    null)
-                                  getWindDirectionWidget(
-                                      latestWeatherData['windDirectionValue']),
-                              ],
-                            ),
-                            Text(latestWeatherData['windSpeed'] ?? '풍속: 정보 없음'),
-                            if (latestWeatherData['precipitationAmount'] !=
-                                null)
-                              Text(
-                                  '강수량: ${latestWeatherData['precipitationAmount']}'),
-                            if (latestWeatherData['snowfallAmount'] != null)
-                              Text(
-                                  '적설: ${latestWeatherData['snowfallAmount']}'),
-                            Text(
-                                '강수 확률: ${latestWeatherData['precipitationProbability']}'),
-                          ],
-                        ),
-                      ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    // Text(weatherDataMessage),
+                    Text(
+                      latestWeatherData['temperature'] ?? '온도: 정보 없음',
+                      style: const TextStyle(fontSize: 25),
                     ),
+                    Text(latestWeatherData['skyStatus'] ?? '하늘 상태: 정보 없음'),
+                    Text(latestWeatherData['humidity'] ?? '습도: 정보 없음'),
+                    Text(latestWeatherData['windDirection'] ?? '풍향: 정보 없음'),
+                    getWindDirectionWidget(latestWeatherData['VEC']),
+                    Text(latestWeatherData['windSpeed'] ?? '풍속: 정보 없음'),
+                    Text(latestWeatherData['precipitationType'] ?? '정보 없음'),
+                    if (latestWeatherData['snowfallAmount'] != null &&
+                        latestWeatherData['snowfallAmount'] != '적설없음')
+                      Text('적설: ${latestWeatherData['snowfallAmount']}'),
+                    Text(
+                      _address,
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                  ],
+                ),
+              ),
               Expanded(
                 child: ListView.builder(
                   itemCount: alarms.length,
                   itemBuilder: (context, index) {
+                    final alarm = alarms[index];
+
+                    List<String> repeatingDays = alarm.repeatDays.entries
+                        .where((entry) => entry.value)
+                        .map((entry) => entry.key)
+                        .toList();
                     return ListTile(
-                      title:
-                          Text('알람 시간: ${alarms[index].time.format(context)}'),
+                      title: Text(
+                        '${alarm.name} ${alarm.time.format(context)}',
+                        style: TextStyle(
+                          color: alarm.isEnabled ? Colors.black : Colors.grey,
+                        ),
+                      ),
+                      subtitle: RichText(
+                        text: TextSpan(
+                          children: repeatingDays.map((day) {
+                            return TextSpan(
+                              text: '$day ',
+                              style: TextStyle(
+                                color: (day == '토' || day == '일')
+                                    ? (alarm.isEnabled
+                                        ? Colors.red
+                                        : Colors.red[200])
+                                    : (alarm.isEnabled
+                                        ? Colors.black
+                                        : Colors.grey),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () => showEditAlarmDialog(alarm, index),
+                      ),
+                      onTap: () {
+                        setState(() {
+                          alarm.isEnabled = !alarm.isEnabled;
+                        });
+                      },
                     );
                   },
                 ),
               ),
             ],
           ),
-        ),
+          Positioned(
+            right: 50,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: Row(
+                children: [
+                  getWindDirectionWidget(latestWeatherData['windDirection']),
+                  Icon(
+                    getWeatherIcon(
+                      int.tryParse(latestWeatherData['pty'] ?? '0'),
+                      latestWeatherData['skyStatus'] ?? '0',
+                    ),
+                    size: 100,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: showAddAlarmDialog,
+        tooltip: 'Add Alarm',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  void showEditAlarmDialog(AlarmInfo alarm, int index) {
+    TextEditingController nameController =
+        TextEditingController(text: alarm.name);
+    TimeOfDay selectedTime = alarm.time;
+    DateTime selectedDate = alarm.date;
+    List<String> daysOfWeek = ["월", "화", "수", "목", "금", "토", "일"];
+
+    // 기존 알람의 반복 요일 상태를 가져와서 복사합니다.
+    List<bool> selectedDays =
+        daysOfWeek.map((day) => alarm.repeatDays[day] ?? false).toList();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Edit Alarm'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    TextField(
+                      controller: nameController,
+                      decoration:
+                          const InputDecoration(labelText: 'Alarm Name'),
+                    ),
+                    ListTile(
+                      title: Text('Time: ${selectedTime.format(context)}'),
+                      onTap: () async {
+                        final TimeOfDay? pickedTime = await showTimePicker(
+                          context: context,
+                          initialTime: selectedTime,
+                        );
+                        if (pickedTime != null) {
+                          setStateDialog(() {
+                            selectedTime = pickedTime;
+                          });
+                        }
+                      },
+                    ),
+                    ListTile(
+                      title: Text(
+                          'Date: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
+                      onTap: () async {
+                        final DateTime? pickedDate = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2050),
+                        );
+                        if (pickedDate != null) {
+                          setStateDialog(() {
+                            selectedDate = pickedDate;
+                          });
+                        }
+                      },
+                    ),
+                    Wrap(
+                      spacing: 8.0,
+                      children: List<Widget>.generate(
+                        daysOfWeek.length,
+                        (int index) {
+                          return ChoiceChip(
+                            label: Text(daysOfWeek[index]),
+                            selected: selectedDays[index],
+                            onSelected: (bool selected) {
+                              setStateDialog(() {
+                                selectedDays[index] = selected;
+                              });
+                            },
+                            selectedColor: (index == 5 || index == 6)
+                                ? Colors.red
+                                : Colors.blue,
+                            backgroundColor: Colors.grey,
+                            labelStyle: TextStyle(
+                              color: selectedDays[index]
+                                  ? Colors.white
+                                  : Colors.black,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    setState(() {
+                      alarms[index] = AlarmInfo(
+                        time: selectedTime,
+                        date: selectedDate,
+                        repeatDays: Map.fromIterables(daysOfWeek, selectedDays),
+                        isEnabled: alarm.isEnabled,
+                        sound: alarm.sound,
+                        name: nameController.text.trim(),
+                        nx: alarm.nx,
+                        ny: alarm.ny,
+                      );
+                    });
+                  },
+                  child: const Text('Save'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    setState(() {
+                      alarms.removeAt(index);
+                    });
+                  },
+                  child:
+                      const Text('Delete', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void showAddAlarmDialog() {
+    TextEditingController nameController = TextEditingController();
+    TimeOfDay selectedTime = TimeOfDay.now();
+    DateTime selectedDate = DateTime.now();
+    List<bool> selectedDays = List.generate(7, (_) => false); // 모든 요일 비활성화로 초기화
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Add New Alarm'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Alarm Name'),
+                ),
+                ListTile(
+                  title: Text('Time: ${selectedTime.format(context)}'),
+                  onTap: () async {
+                    final TimeOfDay? pickedTime = await showTimePicker(
+                      context: context,
+                      initialTime: selectedTime,
+                    );
+                    if (pickedTime != null) {
+                      selectedTime = pickedTime;
+                    }
+                  },
+                ),
+                ListTile(
+                  title: Text('Date: ${selectedDate.toString()}'),
+                  onTap: () async {
+                    final DateTime? pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2050),
+                    );
+                    if (pickedDate != null) {
+                      selectedDate = pickedDate;
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                // 요일 배열
+                List<String> daysOfWeek = [
+                  "Mon",
+                  "Tue",
+                  "Wed",
+                  "Thu",
+                  "Fri",
+                  "Sat",
+                  "Sun"
+                ];
+                // List<bool>을 Map<String, bool>로 변환
+                Map<String, bool> daysMap = {
+                  for (int i = 0; i < daysOfWeek.length; i++)
+                    daysOfWeek[i]: selectedDays[i]
+                };
+
+                setState(
+                  () {
+                    // 알람 정보 객체를 생성하고 리스트에 추가합니다.
+                    alarms.add(
+                      AlarmInfo(
+                        time: selectedTime,
+                        date: selectedDate,
+                        repeatDays: daysMap,
+                        isEnabled: true,
+                        sound: 'default_sound.mp3',
+                        name: nameController.text.trim(),
+                        nx: weatherService.weatherNx,
+                        ny: weatherService.weatherNy,
+                      ),
+                    );
+                  },
+                );
+                Navigator.of(context).pop();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.blue,
+                disabledForegroundColor:
+                    Colors.grey.withOpacity(0.38).withOpacity(0.38),
+              ),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

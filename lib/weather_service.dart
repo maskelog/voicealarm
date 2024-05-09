@@ -52,29 +52,25 @@ class WeatherService {
         closestHour = 23;
       }
 
-      // API 호출
-      var response = await http.get(
-        Uri.parse(
-          'https://api.weather.com/v3/wx/forecast/daily/5day?apiKey=YOUR_API_KEY&geocode=${position.latitude},${position.longitude}&format=json&language=ko-KR&units=e',
-        ),
+      var closestTime = TimeOfDay(hour: closestHour, minute: 0);
+
+      weatherNx = position.latitude.toInt();
+      weatherNy = position.longitude.toInt();
+
+      var weatherData = await fetchWeather(
+        weatherNx,
+        weatherNy,
+        formatDate(selectedDate),
+        formatTime(closestTime),
       );
 
-      // API 응답 처리
-      if (response.statusCode == 200) {
-        var data = jsonDecode(response.body);
-        // baseTime과 fcstTime에 따른 데이터 필터링
-        var filteredData = data['forecasts'].where((forecast) {
-          var baseTime = int.parse(forecast['baseTime']);
-          var fcstTime = int.parse(forecast['fcstTime']);
-          return baseTime == closestHour && (baseTime != 23 || fcstTime <= 800);
-        }).toList();
+      // print('Weather data: $weatherData'); // JSON 데이터 출력
 
-        return filteredData;
-      } else {
-        throw Exception('Failed to load weather data');
-      }
+      return List<Map<String, dynamic>>.from(
+          weatherData.values.expand((item) => item).toList());
     } catch (e) {
-      throw Exception('Failed to connect to the Weather API');
+      print('Detailed error: ${e.toString()}'); // 자세한 오류 출력
+      return []; // 예외가 발생하면 빈 리스트를 반환
     }
   }
 
