@@ -125,8 +125,6 @@ class WeatherScreenState extends State<WeatherScreen> {
     int? pty,
     String? sky,
   ) {
-    print('pty: $pty, sky: $sky');
-
     pty = pty ?? 0;
     sky = sky ?? '0';
 
@@ -177,7 +175,6 @@ class WeatherScreenState extends State<WeatherScreen> {
   }
 
   Widget getWindDirectionWidget(dynamic angle) {
-    print('Wind direction angle: $angle');
     if (angle == null) return const Text('방향 정보 없음');
     double? angleDouble = double.tryParse(angle.toString());
     if (angleDouble == null) return const Text('방향 정보 없음');
@@ -218,10 +215,9 @@ class WeatherScreenState extends State<WeatherScreen> {
     try {
       Position? position = await Geolocator.getLastKnownPosition();
       position ??= await Geolocator.getCurrentPosition();
-      print('Position: $position'); // 위치 정보를 콘솔에 출력합니다.
-      await getAddressFromCoordinates(position); // 'await' 키워드를 추가합니다.
+
+      await getAddressFromCoordinates(position);
     } catch (e) {
-      print('Failed to get location: $e'); // 오류 메시지를 콘솔에 출력합니다.
       setState(() {
         _address = 'Failed to get location: $e';
       });
@@ -231,7 +227,7 @@ class WeatherScreenState extends State<WeatherScreen> {
   Future<void> getAddressFromCoordinates(Position position) async {
     VWorldAddressService addressService = VWorldAddressService();
     String address = await addressService.getAddressFromCoordinates(position);
-    print('Address: $address'); // 주소를 콘솔에 출력합니다.
+
     setState(() {
       _address = address;
     });
