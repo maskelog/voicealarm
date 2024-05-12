@@ -13,8 +13,10 @@ class AlarmManager {
     if (!alarm.isEnabled) return;
 
     try {
-      var weatherData =
-          await weatherService.getWeather(alarm.time, alarm.nx, alarm.ny);
+      var weatherData = await weatherService.fetchWeatherData(
+        alarm.time,
+        alarm.date,
+      );
       alarm.sound = determineSound(weatherData);
       await playSound(alarm.sound);
     } catch (e) {
@@ -26,9 +28,9 @@ class AlarmManager {
     }
   }
 
-  String determineSound(Map<String, String?> weatherData) {
-    final rain = weatherData['RN1'];
-    final snow = weatherData['T1H'];
+  String determineSound(List<Map<String, dynamic>> weatherData) {
+    final rain = weatherData[0]['RN1'];
+    final snow = weatherData[0]['T1H'];
 
     if (rain != null && double.tryParse(rain)! > 0) {
       return 'sca_kr024_v01_w009_wv1.ogg'; // Rainy day sound file
