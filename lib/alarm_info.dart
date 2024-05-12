@@ -36,4 +36,26 @@ class AlarmInfo {
   String toString() {
     return 'AlarmInfo: $name at ${getTimeString()} on ${date.toIso8601String()}, Enabled: $isEnabled, Sound: $sound, Coordinates: ($nx, $ny)';
   }
+
+  Map<String, dynamic> toJson() => {
+        'time': time.toString(),
+        'date': date.toIso8601String(),
+        'repeatDays': repeatDays,
+        'isEnabled': isEnabled,
+        'sound': sound,
+        'name': name,
+        'nx': nx,
+        'ny': ny,
+      };
+
+  factory AlarmInfo.fromJson(Map<String, dynamic> json) => AlarmInfo(
+        time: TimeOfDay.fromDateTime(DateTime.parse(json['time'])),
+        date: DateTime.parse(json['date']),
+        repeatDays: Map<String, bool>.from(json['repeatDays']),
+        isEnabled: json['isEnabled'],
+        sound: json['sound'],
+        name: json['name'],
+        nx: json['nx'],
+        ny: json['ny'],
+      );
 }

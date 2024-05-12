@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_voice_alarm/alarm_info.dart';
+import 'package:flutter_voice_alarm/alarm_manager.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'weather_service.dart';
@@ -48,9 +49,9 @@ class WeatherScreenState extends State<WeatherScreen> {
     loadAlarms();
   }
 
-  void loadAlarms() {
-    // 이 함수는 알람 데이터를 로드하는 로직을 구현해야 함
-    // 예: alarms = await alarmStorage.getAlarms();
+  void loadAlarms() async {
+    AlarmManager alarmManager = AlarmManager(WeatherService());
+    alarms = await alarmManager.loadAlarms();
   }
 
   fetchWeather() async {

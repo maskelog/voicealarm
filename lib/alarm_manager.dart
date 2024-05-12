@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_voice_alarm/alarm_info.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_voice_alarm/weather_service.dart';
 
 class AlarmManager {
@@ -26,6 +29,21 @@ class AlarmManager {
       }
       await playSound('default_sound.mp3');
     }
+  }
+
+  Future<void> saveAlarms(List<AlarmInfo> alarms) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> alarmStrings =
+        alarms.map((alarm) => jsonEncode(alarm.toJson())).toList();
+    await prefs.setStringList('alarms', alarmStrings);
+  }
+
+  Future<List<AlarmInfo>> loadAlarms() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> alarmStrings = prefs.getStringList('alarms') ?? [];
+    return alarmStrings
+        .map((alarmString) => AlarmInfo.fromJson(jsonDecode(alarmString)))
+        .toList();
   }
 
   String determineSound(List<Map<String, dynamic>> weatherData) {
