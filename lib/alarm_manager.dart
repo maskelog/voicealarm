@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_voice_alarm/alarm_info.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_voice_alarm/weather_service.dart';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 
 class AlarmManager {
   final WeatherService weatherService;
@@ -12,23 +13,27 @@ class AlarmManager {
 
   AlarmManager(this.weatherService);
 
-  Future<void> checkAlarm(AlarmInfo alarm) async {
-    if (!alarm.isEnabled) return;
+  Future<void> scheduleAlarm(AlarmInfo alarm) async {
+    DateTime scheduleDate = DateTime(alarm.date.year, alarm.date.month,
+        alarm.date.day, alarm.time.hour, alarm.time.minute);
+    await AndroidAlarmManager.oneShotAt(
+        scheduleDate,
+        alarm.id, // Unique ID for each alarm
+        checkAlarmCallback,
+        alarmClock: true,
+        wakeup: true,
+        exact: true,
+        rescheduleOnReboot: true);
+  }
 
-    try {
-      var weatherData = await weatherService.fetchWeatherData(
-        alarm.time,
-        alarm.date,
-      );
-      alarm.sound = determineSound(weatherData);
-      await playSound(alarm.sound);
-    } catch (e) {
-      // Print any errors that occur while checking the alarm
-      if (kDebugMode) {
-        print('Error checking alarm: $e');
-      }
-      await playSound('default_sound.mp3');
-    }
+  static Future<void> checkAlarmCallback() async {
+    // Implement fetching alarm details and weather data logic
+    print('Alarm triggered!');
+    // This needs to handle instance variables differently as it's a static method.
+  }
+
+  Future<void> cancelAlarm(int alarmId) async {
+    await AndroidAlarmManager.cancel(alarmId);
   }
 
   Future<void> saveAlarms(List<AlarmInfo> alarms) async {
@@ -61,9 +66,8 @@ class AlarmManager {
 
   Future<void> playSound(String soundFileName) async {
     try {
-      await audioPlayer.play('lib/assets/sounds/$soundFileName' as Source);
+      await audioPlayer.play(AssetSource('lib/assets/sounds/$soundFileName'));
     } catch (e) {
-      // Print any errors that occur while playing the sound
       if (kDebugMode) {
         print('Error playing sound: $e');
       }

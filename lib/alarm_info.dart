@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AlarmInfo {
+  int id; // 알람 고유 ID
   TimeOfDay time; // 알람 시간
   DateTime date; // 알람 날짜
   Map<String, bool> repeatDays; // 요일별 반복 여부
@@ -11,6 +12,7 @@ class AlarmInfo {
   int ny; // 기상청 API 격자 좌표 y
 
   AlarmInfo({
+    required this.id,
     required this.time,
     required this.date,
     required this.repeatDays,
@@ -38,7 +40,8 @@ class AlarmInfo {
   }
 
   Map<String, dynamic> toJson() => {
-        'time': time.toString(),
+        'id': id,
+        'time': {'hour': time.hour, 'minute': time.minute},
         'date': date.toIso8601String(),
         'repeatDays': repeatDays,
         'isEnabled': isEnabled,
@@ -49,7 +52,9 @@ class AlarmInfo {
       };
 
   factory AlarmInfo.fromJson(Map<String, dynamic> json) => AlarmInfo(
-        time: TimeOfDay.fromDateTime(DateTime.parse(json['time'])),
+        id: json['id'],
+        time: TimeOfDay(
+            hour: json['time']['hour'], minute: json['time']['minute']),
         date: DateTime.parse(json['date']),
         repeatDays: Map<String, bool>.from(json['repeatDays']),
         isEnabled: json['isEnabled'],
