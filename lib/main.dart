@@ -508,6 +508,7 @@ class WeatherScreenState extends State<WeatherScreen> {
                         name: nameController.text.trim(),
                         nx: alarm.nx,
                         ny: alarm.ny,
+                        id: alarm.hashCode,
                       );
                     });
                   },
@@ -615,6 +616,7 @@ class WeatherScreenState extends State<WeatherScreen> {
                         name: nameController.text.trim(),
                         nx: weatherService.weatherNx,
                         ny: weatherService.weatherNy,
+                        id: alarms.length,
                       ),
                     );
                   },
