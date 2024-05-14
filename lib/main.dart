@@ -536,102 +536,139 @@ class WeatherScreenState extends State<WeatherScreen> {
     TextEditingController nameController = TextEditingController();
     TimeOfDay selectedTime = TimeOfDay.now();
     DateTime selectedDate = DateTime.now();
+    List<String> daysOfWeek = ["월", "화", "수", "목", "금", "토", "일"];
     List<bool> selectedDays = List.generate(7, (_) => false); // 모든 요일 비활성화로 초기화
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Add New Alarm'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Alarm Name'),
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('새 알람'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    TextField(
+                      controller: nameController,
+                      decoration:
+                          const InputDecoration(labelText: 'Alarm Name'),
+                    ),
+                    ListTile(
+                      title: Text('Time: ${selectedTime.format(context)}'),
+                      onTap: () async {
+                        final TimeOfDay? pickedTime = await showTimePicker(
+                          context: context,
+                          initialTime: selectedTime,
+                        );
+                        if (pickedTime != null) {
+                          setStateDialog(() {
+                            selectedTime = pickedTime;
+                          });
+                        }
+                      },
+                    ),
+                    ListTile(
+                      title: Text(
+                          'Date: ${DateFormat('MM-dd-EEE').format(selectedDate)}'),
+                      onTap: () async {
+                        final DateTime? pickedDate = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2050),
+                        );
+                        if (pickedDate != null) {
+                          setStateDialog(() {
+                            selectedDate = pickedDate;
+                          });
+                        }
+                      },
+                    ),
+                    Wrap(
+                      spacing: 8.0,
+                      children: List<Widget>.generate(
+                        daysOfWeek.length,
+                        (int index) {
+                          return ChoiceChip(
+                            label: Text(daysOfWeek[index]),
+                            selected: selectedDays[index],
+                            onSelected: (bool selected) {
+                              setStateDialog(() {
+                                selectedDays[index] = selected;
+                              });
+                            },
+                            selectedColor: (index == 5 || index == 6)
+                                ? Colors.red
+                                : Colors.blue,
+                            backgroundColor: Colors.grey,
+                            labelStyle: TextStyle(
+                              color: selectedDays[index]
+                                  ? Colors.white
+                                  : Colors.black,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-                ListTile(
-                  title: Text('Time: ${selectedTime.format(context)}'),
-                  onTap: () async {
-                    final TimeOfDay? pickedTime = await showTimePicker(
-                      context: context,
-                      initialTime: selectedTime,
-                    );
-                    if (pickedTime != null) {
-                      selectedTime = pickedTime;
-                    }
-                  },
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
                 ),
-                ListTile(
-                  title: Text('Date: ${selectedDate.toString()}'),
-                  onTap: () async {
-                    final DateTime? pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: selectedDate,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2050),
+                TextButton(
+                  onPressed: () {
+                    // 요일 배열
+                    List<String> daysOfWeek = [
+                      "Mon",
+                      "Tue",
+                      "Wed",
+                      "Thu",
+                      "Fri",
+                      "Sat",
+                      "Sun"
+                    ];
+                    // List<bool>을 Map<String, bool>로 변환
+                    Map<String, bool> daysMap = {
+                      for (int i = 0; i < daysOfWeek.length; i++)
+                        daysOfWeek[i]: selectedDays[i]
+                    };
+
+                    setState(
+                      () {
+                        // 알람 정보 객체를 생성하고 리스트에 추가합니다.
+                        alarms.add(
+                          AlarmInfo(
+                            time: selectedTime,
+                            date: selectedDate,
+                            repeatDays: daysMap,
+                            isEnabled: true,
+                            sound: 'default_sound.mp3',
+                            name: nameController.text.trim(),
+                            nx: weatherService.weatherNx,
+                            ny: weatherService.weatherNy,
+                            id: alarms.length,
+                          ),
+                        );
+                      },
                     );
-                    if (pickedDate != null) {
-                      selectedDate = pickedDate;
-                    }
+                    Navigator.of(context).pop();
                   },
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.blue,
+                    disabledForegroundColor:
+                        Colors.grey.withOpacity(0.38).withOpacity(0.38),
+                  ),
+                  child: const Text('Save'),
                 ),
               ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                // 요일 배열
-                List<String> daysOfWeek = [
-                  "Mon",
-                  "Tue",
-                  "Wed",
-                  "Thu",
-                  "Fri",
-                  "Sat",
-                  "Sun"
-                ];
-                // List<bool>을 Map<String, bool>로 변환
-                Map<String, bool> daysMap = {
-                  for (int i = 0; i < daysOfWeek.length; i++)
-                    daysOfWeek[i]: selectedDays[i]
-                };
-
-                setState(
-                  () {
-                    // 알람 정보 객체를 생성하고 리스트에 추가합니다.
-                    alarms.add(
-                      AlarmInfo(
-                        time: selectedTime,
-                        date: selectedDate,
-                        repeatDays: daysMap,
-                        isEnabled: true,
-                        sound: 'default_sound.mp3',
-                        name: nameController.text.trim(),
-                        nx: weatherService.weatherNx,
-                        ny: weatherService.weatherNy,
-                        id: alarms.length,
-                      ),
-                    );
-                  },
-                );
-                Navigator.of(context).pop();
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: Colors.blue,
-                disabledForegroundColor:
-                    Colors.grey.withOpacity(0.38).withOpacity(0.38),
-              ),
-              child: const Text('Save'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
