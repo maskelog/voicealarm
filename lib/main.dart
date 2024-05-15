@@ -310,6 +310,7 @@ class WeatherScreenState extends State<WeatherScreen> {
 
   Future<void> _refreshWeather() async {
     await fetchWeather();
+    await _getAddress();
   }
 
   @override
@@ -404,13 +405,20 @@ class WeatherScreenState extends State<WeatherScreen> {
     );
   }
 
-  void _getAddress() async {
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-    var data = await VWorldAddressService.fetchAddress(
-        position.latitude, position.longitude);
-    setState(() {
-      _address = data['address'];
-    });
+  Future<void> _getAddress() async {
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      var data = await VWorldAddressService.fetchAddress(
+          position.latitude, position.longitude);
+      setState(() {
+        _address = data['text']; // 주소 데이터를 올바르게 추출
+      });
+    } catch (e) {
+      print('Failed to get address: $e');
+      setState(() {
+        _address = 'Failed to get address: $e';
+      });
+    }
   }
 }
