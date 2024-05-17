@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter_voice_alarm/alarm_info.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_voice_alarm/alarm_info.dart';
 import 'package:flutter_voice_alarm/weather_service.dart';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 
@@ -23,12 +23,37 @@ class AlarmManager {
         wakeup: true,
         exact: true,
         rescheduleOnReboot: true);
+    // 알람을 스케줄링한 후 알람을 저장
+    List<AlarmInfo> alarms = await loadAlarms();
+    alarms.add(alarm);
+    await saveAlarms(alarms);
   }
 
-  static Future<void> checkAlarmCallback() async {
-    // Implement fetching alarm details and weather data logic
-    print('Alarm triggered!');
-    // This needs to handle instance variables differently as it's a static method.
+  static Future<void> checkAlarmCallback(int id) async {
+    // Fetch alarm details from shared preferences or other storage
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> alarmStrings = prefs.getStringList('alarms') ?? [];
+    List<AlarmInfo> alarms = alarmStrings
+        .map((alarmString) => AlarmInfo.fromJson(jsonDecode(alarmString)))
+        .toList();
+
+    // Fetch the triggered alarm
+    AlarmInfo? triggeredAlarm;
+    for (var alarm in alarms) {
+      if (alarm.id == id && alarm.isEnabled) {
+        triggeredAlarm = alarm;
+        break;
+      }
+    }
+
+    if (triggeredAlarm != null) {
+      // Play alarm sound
+      AudioPlayer audioPlayer = AudioPlayer();
+      await audioPlayer.play(AssetSource('assets/sounds/alarm_sound.ogg'));
+
+      // Show alarm ringing screen (this might need to be adjusted to properly integrate with your Flutter app)
+      // runApp(MaterialApp(home: AlarmScreen(alarm: triggeredAlarm, audioPlayer: audioPlayer)));
+    }
   }
 
   Future<void> cancelAlarm(int alarmId) async {
@@ -67,9 +92,7 @@ class AlarmManager {
     try {
       await audioPlayer.play(AssetSource('lib/assets/sounds/$soundFileName'));
     } catch (e) {
-      if (kDebugMode) {
-        print('Error playing sound: $e');
-      }
+      print('Error playing sound: $e');
     }
   }
 }

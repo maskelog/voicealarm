@@ -75,6 +75,8 @@ flutter:
     # 날씨 좋은 날
     - lib/assets/sounds/sca_kr024_v01_w002_wv1.ogg
     # 바람 부는 날
+    - lib/assets/sounds/alarm_sound.ogg
+    # 기본 알람음
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

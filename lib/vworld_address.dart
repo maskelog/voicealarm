@@ -39,6 +39,8 @@ class AddressFinder extends StatefulWidget {
 
 class _AddressFinderState extends State<AddressFinder> {
   String _address = 'Press button to get your address';
+  bool _isFetching = false;
+  String _error = '';
 
   @override
   void initState() {
@@ -47,6 +49,11 @@ class _AddressFinderState extends State<AddressFinder> {
   }
 
   Future<void> getPositionAndAddress() async {
+    setState(() {
+      _isFetching = true;
+      _error = '';
+    });
+
     try {
       Position? position = await Geolocator.getLastKnownPosition();
       position ??= await Geolocator.getCurrentPosition();
@@ -57,6 +64,10 @@ class _AddressFinderState extends State<AddressFinder> {
     } catch (e) {
       setState(() {
         _address = 'Failed to get location: $e';
+      });
+    } finally {
+      setState(() {
+        _isFetching = false;
       });
     }
   }
@@ -76,19 +87,32 @@ class _AddressFinderState extends State<AddressFinder> {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(_address, textAlign: TextAlign.center),
-          ),
-          ElevatedButton(
-            onPressed: getPositionAndAddress,
-            child: const Text('Get Address'),
-          ),
-        ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Address Finder'),
+      ),
+      body: Center(
+        child: _isFetching
+            ? const CircularProgressIndicator()
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(_address, textAlign: TextAlign.center),
+                  ),
+                  if (_error.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(_error,
+                          style: const TextStyle(color: Colors.red)),
+                    ),
+                  ElevatedButton(
+                    onPressed: getPositionAndAddress,
+                    child: const Text('Get Address'),
+                  ),
+                ],
+              ),
       ),
     );
   }

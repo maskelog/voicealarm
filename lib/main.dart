@@ -34,12 +34,15 @@ class WeatherScreen extends StatefulWidget {
 
 class WeatherScreenState extends State<WeatherScreen> {
   WeatherService weatherService = WeatherService();
+  AlarmManager alarmManager;
   Map<String, dynamic> latestWeatherData = {};
   String weatherDataMessage = "날씨 정보를 불러오는 중...";
   List<AlarmInfo> alarms = [];
   int nx = 0;
   int ny = 0;
   String _address = 'Loading address...';
+
+  WeatherScreenState() : alarmManager = AlarmManager(WeatherService());
 
   @override
   void initState() {
@@ -50,7 +53,6 @@ class WeatherScreenState extends State<WeatherScreen> {
   }
 
   void loadAlarms() async {
-    AlarmManager alarmManager = AlarmManager(weatherService);
     alarms = await alarmManager.loadAlarms();
     setState(() {});
   }
@@ -83,6 +85,10 @@ class WeatherScreenState extends State<WeatherScreen> {
     var vecValue = tempData['VEC'] != null
         ? double.tryParse(tempData['VEC']!['fcstValue'].toString())
         : null;
+
+    // 로그 추가
+    print('Processed Weather Data: $tempData');
+
     latestWeatherData = {
       'temperature': tempData.containsKey('TMP')
           ? '온도: ${tempData['TMP']?['fcstValue']}°C'
@@ -268,7 +274,7 @@ class WeatherScreenState extends State<WeatherScreen> {
                 ),
                 TextButton(
                   child: const Text('저장'),
-                  onPressed: () {
+                  onPressed: () async {
                     Map<String, bool> repeatDays = {
                       "월": selectedDays[0],
                       "화": selectedDays[1],
@@ -278,20 +284,36 @@ class WeatherScreenState extends State<WeatherScreen> {
                       "토": selectedDays[5],
                       "일": selectedDays[6],
                     };
-                    setState(() {
-                      alarms.add(
-                        AlarmInfo(
-                          id: alarms.length,
-                          time: selectedTime,
-                          date: selectedDate,
-                          repeatDays: repeatDays,
-                          name: nameController.text,
-                          nx: nx,
-                          ny: ny,
-                        ),
-                      );
-                    });
-                    Navigator.of(context).pop();
+
+                    AlarmInfo newAlarm = AlarmInfo(
+                      id: alarms.length,
+                      time: selectedTime,
+                      date: selectedDate,
+                      repeatDays: repeatDays,
+                      name: nameController.text,
+                      nx: nx,
+                      ny: ny,
+                    );
+
+                    try {
+                      await alarmManager.scheduleAlarm(newAlarm);
+                      if (mounted) {
+                        setState(() {
+                          alarms.add(newAlarm);
+                        });
+                        Navigator.of(context).pop();
+                      }
+                    } catch (e) {
+                      print('Failed to schedule alarm: $e');
+                      if (mounted) {
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('알람을 설정하는데 실패했습니다: $e'),
+                          ),
+                        );
+                      }
+                    }
                   },
                 ),
               ],
@@ -409,13 +431,15 @@ class WeatherScreenState extends State<WeatherScreen> {
     try {
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
-      var data = await VWorldAddressService.fetchAddress(
-          position.latitude, position.longitude);
+      String address = await VWorldAddressService.fetchAddress(
+              position.latitude, position.longitude)
+          .then((result) => result['text']);
       setState(() {
-        _address = data['text']; // 주소 데이터를 올바르게 추출
+        _address = address;
+        nx = position.latitude.toInt();
+        ny = position.longitude.toInt();
       });
     } catch (e) {
-      print('Failed to get address: $e');
       setState(() {
         _address = 'Failed to get address: $e';
       });

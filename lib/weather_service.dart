@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
@@ -16,23 +17,21 @@ class WeatherService {
       int nx, int ny, String baseDate, String baseTime) async {
     final response = await http.get(
       Uri.parse(
-          "$baseUrl?pageNo=1&numOfRows=100&dataType=JSON&base_date=$baseDate&base_time=$baseTime&ny=$ny&nx=$nx&authKey=$apiKey"),
+          "$baseUrl?pageNo=1&numOfRows=100&dataType=JSON&base_date=$baseDate&base_time=$baseTime&nx=$nx&ny=$ny&authKey=$apiKey"),
     );
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      print('Response Data: $data');
 
       // API 응답에서 필요한 데이터만 추출
       if (data['response']['header']['resultCode'] == '00') {
+        print('Response Data: $data');
         return data['response']['body']['items'];
       } else {
-        throw Exception(
-            'Failed to load weather data: ${data['response']['header']['resultMsg']}');
+        throw Exception('Failed to load weather data');
       }
     } else {
-      throw Exception(
-          'Failed to connect to the Weather API: ${response.statusCode}');
+      throw Exception('Failed to connect to the Weather API');
     }
   }
 
@@ -41,7 +40,6 @@ class WeatherService {
     try {
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
-
       var availableHours = [5, 8, 11, 14, 17, 20, 23];
       var currentHour = selectedTime.hour;
 
@@ -50,16 +48,15 @@ class WeatherService {
           (a, b) => (b - currentHour).abs() < (a - currentHour).abs() ? b : a);
 
       // 선택한 시간이 05시 이전이면 전날의 23시 데이터를 가져옴
-      if (currentHour < 5) {
+      if (closestHour < 5) {
         selectedDate = selectedDate.subtract(const Duration(days: 1));
         closestHour = 23;
       }
 
       var closestTime = TimeOfDay(hour: closestHour, minute: 0);
 
-      // 기상청 API의 좌표계는 위치의 경도와 위도를 행정구역 코드로 변환한 값이 필요함
-      weatherNy = position.longitude.toInt();
       weatherNx = position.latitude.toInt();
+      weatherNy = position.longitude.toInt();
 
       var weatherData = await fetchWeather(
         weatherNx,
@@ -68,8 +65,10 @@ class WeatherService {
         formatTime(closestTime),
       );
 
+      // print('Weather data: $weatherData'); // JSON 데이터 출력
+
       return List<Map<String, dynamic>>.from(
-          weatherData.values.expand((item) => item).toList());
+          weatherData['item'].map((item) => item as Map<String, dynamic>));
     } catch (e) {
       print('Detailed error: ${e.toString()}'); // 자세한 오류 출력
       return []; // 예외가 발생하면 빈 리스트를 반환

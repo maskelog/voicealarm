@@ -63,4 +63,36 @@ class AlarmInfo {
         nx: json['nx'],
         ny: json['ny'],
       );
+
+  /// 현재 시간이 알람 시간과 일치하는지 확인합니다.
+  bool shouldRingNow() {
+    DateTime now = DateTime.now();
+    if (now.hour == time.hour && now.minute == time.minute) {
+      String today = _getDayString(now.weekday);
+      return isActiveOnDay(today);
+    }
+    return false;
+  }
+
+  /// DateTime의 weekday를 요일 문자열로 변환합니다.
+  String _getDayString(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return "월";
+      case DateTime.tuesday:
+        return "화";
+      case DateTime.wednesday:
+        return "수";
+      case DateTime.thursday:
+        return "목";
+      case DateTime.friday:
+        return "금";
+      case DateTime.saturday:
+        return "토";
+      case DateTime.sunday:
+        return "일";
+      default:
+        return "";
+    }
+  }
 }
