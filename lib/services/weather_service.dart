@@ -9,26 +9,38 @@ class WeatherService {
       "https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst";
   final String apiKey;
 
-  WeatherService() : apiKey = dotenv.env['APIHUB']!;
+  WeatherService() : apiKey = dotenv.env['APIHUB']! {
+    if (apiKey.isEmpty) {
+      throw Exception(
+          "API key not found. Make sure to set APIHUB in .env file.");
+    }
+  }
 
   Future<Map<String, dynamic>> fetchWeather(
       int nx, int ny, String baseDate, String baseTime) async {
-    final response = await http.get(
-      Uri.parse(
-          "$baseUrl?pageNo=1&numOfRows=100&dataType=JSON&base_date=$baseDate&base_time=$baseTime&nx=$nx&ny=$ny&serviceKey=$apiKey"),
-    );
+    final url = Uri.parse(
+        "$baseUrl?pageNo=1&numOfRows=100&dataType=JSON&base_date=$baseDate&base_time=$baseTime&nx=$nx&ny=$ny&authKey=$apiKey");
+
+    print("Request URL: $url");
+
+    final response = await http.get(url);
+
+    print("Response status: ${response.statusCode}");
+    print("Response body: ${utf8.decode(response.bodyBytes)}");
 
     if (response.statusCode == 200) {
-      final data = json.decode(response.body);
+      final data = json.decode(utf8.decode(response.bodyBytes));
 
       if (data['response']['header']['resultCode'] == '00') {
         print('Response Data: $data');
         return data['response']['body']['items'];
       } else {
-        throw Exception('Failed to load weather data');
+        throw Exception(
+            'Failed to load weather data: ${data['response']['header']['resultMsg']}');
       }
     } else {
-      throw Exception('Failed to connect to the Weather API');
+      throw Exception(
+          'Failed to connect to the Weather API. Status: ${response.statusCode}');
     }
   }
 
@@ -43,7 +55,8 @@ class WeatherService {
       var closestHour = availableHours.reduce(
           (a, b) => (b - currentHour).abs() < (a - currentHour).abs() ? b : a);
 
-      if (closestHour < 5) {
+      // 0500시 이전이면 전날 2300시 baseTime을 사용
+      if (selectedTime.hour < 5) {
         selectedDate = selectedDate.subtract(const Duration(days: 1));
         closestHour = 23;
       }
@@ -74,7 +87,7 @@ class WeatherService {
   }
 
   String formatTime(TimeOfDay time) {
-    return '${time.hour.toString().padLeft(2, '0')}${time.minute.toString().padLeft(2, '0')}';
+    return '${time.hour.toString().padLeft(2, '0')}00';
   }
 
   String getSkyStatus(String fcstValue) {

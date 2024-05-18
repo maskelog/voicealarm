@@ -94,68 +94,36 @@ class WeatherScreenState extends State<WeatherScreen> {
   String getPrecipitationType(String? pty) {
     switch (pty) {
       case '0':
-        return '강수 형태: 없음';
+        return '강수형태: 없음';
       case '1':
-        return '강수 형태: 비';
+        return '강수형태: 비';
       case '2':
-        return '강수 형태: 비/눈';
+        return '강수형태: 비/눈';
       case '3':
-        return '강수 형태: 눈';
-      case '5':
-        return '강수 형태: 빗방울';
-      case '6':
-        return '강수 형태: 빗방울/눈날림';
-      case '7':
-        return '강수 형태: 눈날림';
+        return '강수형태: 눈';
+      case '4':
+        return '강수형태: 소나기';
       default:
-        return '강수 형태: 정보 없음';
+        return '강수형태: 정보 없음';
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '현재 위치의 날씨',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 20),
-        if (latestWeatherData.isNotEmpty)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                latestWeatherData['temperature'] ?? '온도 정보 없음',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              Text(
-                latestWeatherData['skyStatus'] ?? '하늘 상태 정보 없음',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              Text(
-                latestWeatherData['humidity'] ?? '습도 정보 없음',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              Text(
-                latestWeatherData['windDirection'] ?? '풍향 정보 없음',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              Text(
-                latestWeatherData['windSpeed'] ?? '풍속 정보 없음',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              Text(
-                latestWeatherData['precipitationType'] ?? '강수 형태 정보 없음',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ],
-          )
+        if (weatherDataMessage.isNotEmpty)
+          Text(weatherDataMessage)
         else
-          Text(
-            weatherDataMessage,
-            style: Theme.of(context).textTheme.titleLarge,
+          Column(
+            children: [
+              Text(latestWeatherData['temperature'] ?? '온도: 정보 없음'),
+              Text(latestWeatherData['skyStatus'] ?? '하늘 상태: 정보 없음'),
+              Text(latestWeatherData['humidity'] ?? '습도: 정보 없음'),
+              Text(latestWeatherData['windDirection'] ?? '풍향: 정보 없음'),
+              Text(latestWeatherData['windSpeed'] ?? '풍속: 정보 없음'),
+              Text(latestWeatherData['precipitationType'] ?? '강수형태: 정보 없음'),
+            ],
           ),
       ],
     );
