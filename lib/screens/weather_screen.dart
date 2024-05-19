@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/weather_service.dart';
+import '../services/vworld_address.dart';
+import 'package:geolocator/geolocator.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -14,11 +16,15 @@ class WeatherScreenState extends State<WeatherScreen> {
   String weatherDataMessage = "날씨 정보를 불러오는 중...";
   final TimeOfDay _selectedTime = TimeOfDay.now();
   final DateTime _selectedDate = DateTime.now();
+  String _address = '주소를 불러오는 중...';
+  bool _isFetchingAddress = false;
+  String _error = '';
 
   @override
   void initState() {
     super.initState();
     fetchWeather();
+    getPositionAndAddress();
   }
 
   fetchWeather() async {
@@ -64,6 +70,46 @@ class WeatherScreenState extends State<WeatherScreen> {
           : '풍속: 정보 없음',
       'precipitationType': getPrecipitationType(tempData['PTY']?['fcstValue']),
     };
+  }
+
+  Future<void> getPositionAndAddress() async {
+    setState(() {
+      _isFetchingAddress = true;
+      _error = '';
+    });
+
+    try {
+      Position? position = await Geolocator.getLastKnownPosition();
+      position ??= await Geolocator.getCurrentPosition();
+      String address = await getAddressFromCoordinates(position);
+      setState(() {
+        _address = address;
+        print("Fetched address: $_address");
+      });
+    } catch (e) {
+      setState(() {
+        _address = '위치를 불러오는데 실패했습니다: $e';
+        print("Error fetching address: $e");
+      });
+    } finally {
+      setState(() {
+        _isFetchingAddress = false;
+      });
+    }
+  }
+
+  Future<String> getAddressFromCoordinates(Position position) async {
+    try {
+      double latitude = position.latitude;
+      double longitude = position.longitude;
+      String addressText =
+          await VWorldAddressService.fetchAddress(latitude, longitude);
+      print("Address text: $addressText");
+      return addressText;
+    } catch (e) {
+      print("Error in getAddressFromCoordinates: $e");
+      return '주소를 불러오는데 실패했습니다: $e';
+    }
   }
 
   String getWindDirection(double? vecValue) {
@@ -123,7 +169,15 @@ class WeatherScreenState extends State<WeatherScreen> {
               Text(latestWeatherData['windDirection'] ?? '풍향: 정보 없음'),
               Text(latestWeatherData['windSpeed'] ?? '풍속: 정보 없음'),
               Text(latestWeatherData['precipitationType'] ?? '강수형태: 정보 없음'),
+              const SizedBox(height: 20),
+              Text(_address),
             ],
+          ),
+        if (_isFetchingAddress) const CircularProgressIndicator(),
+        if (_error.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(_error, style: const TextStyle(color: Colors.red)),
           ),
       ],
     );
