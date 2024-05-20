@@ -1,23 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'screens/home_screen.dart';
 import 'providers/alarm_provider.dart';
+import 'screens/home_screen.dart';
+import 'utils/alarm_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AndroidAlarmManager.initialize();
-  await dotenv.load(fileName: ".env");
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AlarmProvider()),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  await AlarmHelper.initialize();
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -25,12 +17,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Alarm App',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
+    return ChangeNotifierProvider(
+      create: (_) => AlarmProvider(),
+      child: MaterialApp(
+        title: 'Flutter Alarm App',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+        ),
+        home: const HomeScreen(),
       ),
-      home: const HomeScreen(),
     );
   }
 }

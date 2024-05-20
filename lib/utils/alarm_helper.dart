@@ -4,14 +4,12 @@ class AlarmHelper {
   static final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  static Future<void> initializeNotifications() async {
+  static Future<void> initialize() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@drawable/app_icon');
+        AndroidInitializationSettings('app_icon');
 
     const InitializationSettings initializationSettings =
-        InitializationSettings(
-      android: initializationSettingsAndroid,
-    );
+        InitializationSettings(android: initializationSettingsAndroid);
 
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
@@ -19,24 +17,19 @@ class AlarmHelper {
   static Future<void> triggerAlarm(int id) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
-      'alarm_channel',
-      'Alarm Notifications',
-      channelDescription: 'Channel for Alarm notifications',
-      importance: Importance.high,
+      'your channel id',
+      'your channel name',
+      channelDescription: 'your channel description',
+      importance: Importance.max,
       priority: Priority.high,
-      sound: RawResourceAndroidNotificationSound('alarm_sound'),
-      playSound: true,
-      enableVibration: true,
+      showWhen: false,
     );
-
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-    );
-
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
     await flutterLocalNotificationsPlugin.show(
       id,
       '알람',
-      '설정된 알람이 울립니다!',
+      '알람이 울립니다!',
       platformChannelSpecifics,
     );
   }
