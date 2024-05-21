@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'alarm_screen.dart';
 import '../providers/alarm_provider.dart';
 import 'weather_screen.dart';
+import 'full_screen_alarm.dart';
+import '../main.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -82,6 +86,10 @@ class HomeScreen extends StatelessWidget {
               },
             ),
           ),
+          const ElevatedButton(
+            onPressed: _setAlarm, // 알람 설정 버튼
+            child: Text('Set Test Alarm'),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -123,6 +131,46 @@ class HomeScreen extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  static Future<void> _alarmCallback() async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'alarm_channel',
+      'Alarm Channel',
+      channelDescription: 'Channel for Alarm notifications',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: false,
+      sound: RawResourceAndroidNotificationSound('alarm_sound'),
+      fullScreenIntent: true,
+    );
+
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await flutterLocalNotificationsPlugin.show(
+      0,
+      'Alarm',
+      'It\'s time!',
+      platformChannelSpecifics,
+      payload: 'Alarm payload',
+    );
+
+    WidgetsFlutterBinding.ensureInitialized();
+    runApp(const MaterialApp(
+      home: FullScreenAlarmScreen(),
+    ));
+  }
+
+  static Future<void> _setAlarm() async {
+    await AndroidAlarmManager.oneShot(
+      const Duration(seconds: 5), // 예시로 5초 후에 알람이 울리도록 설정
+      0,
+      _alarmCallback,
+      exact: true,
+      wakeup: true,
     );
   }
 }
