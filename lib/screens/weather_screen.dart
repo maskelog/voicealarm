@@ -102,30 +102,40 @@ class WeatherScreenState extends State<WeatherScreen> {
     }
   }
 
-  String? getWindDirection(double? windDirectionValue) {
+  String getWindDirection(double? windDirectionValue) {
     if (windDirectionValue == null) {
-      return null;
+      return '풍향: 정보 없음';
     }
 
-    if ((windDirectionValue >= 0 && windDirectionValue <= 22.5) ||
-        (windDirectionValue > 337.5 && windDirectionValue <= 360)) {
-      return '풍향: N (북)';
-    } else if (windDirectionValue > 22.5 && windDirectionValue <= 67.5) {
-      return '풍향: NE (북동)';
-    } else if (windDirectionValue > 67.5 && windDirectionValue <= 112.5) {
-      return '풍향: E (동)';
-    } else if (windDirectionValue > 112.5 && windDirectionValue <= 157.5) {
-      return '풍향: SE (남동)';
-    } else if (windDirectionValue > 157.5 && windDirectionValue <= 202.5) {
-      return '풍향: S (남)';
-    } else if (windDirectionValue > 202.5 && windDirectionValue <= 247.5) {
-      return '풍향: SW (남서)';
-    } else if (windDirectionValue > 247.5 && windDirectionValue <= 292.5) {
-      return '풍향: W (서)';
-    } else if (windDirectionValue > 292.5 && windDirectionValue <= 337.5) {
-      return '풍향: NW (북서)';
+    List<String> directions = [
+      '북',
+      '북북동',
+      '북동',
+      '동북동',
+      '동',
+      '동남동',
+      '남동',
+      '남남동',
+      '남',
+      '남남서',
+      '남서',
+      '서남서',
+      '서',
+      '서북서',
+      '북서',
+      '북북서',
+    ];
+
+    int index = ((windDirectionValue + 11.25) % 360 ~/ 22.5).toInt();
+    return '풍향: ${directions[index]}';
+  }
+
+  double getWindDirectionAngle(double? windDirectionValue) {
+    if (windDirectionValue == null) {
+      return 0.0;
     }
-    return null;
+
+    return windDirectionValue * (3.1415926535897932 / 180);
   }
 
   String getPrecipitationType(dynamic precipitationValue) {
@@ -181,9 +191,23 @@ class WeatherScreenState extends State<WeatherScreen> {
                         style: const TextStyle(fontSize: 18.0),
                       ),
                       const SizedBox(height: 8.0),
-                      Text(
-                        latestWeatherData['windDirection'] ?? '풍향: 정보 없음',
-                        style: const TextStyle(fontSize: 18.0),
+                      Row(
+                        children: [
+                          Text(
+                            latestWeatherData['windDirection'] ?? '풍향: 정보 없음',
+                            style: const TextStyle(fontSize: 18.0),
+                          ),
+                          const SizedBox(width: 8.0),
+                          if (latestWeatherData['windDirectionValue'] != null)
+                            Transform.rotate(
+                              angle: getWindDirectionAngle(
+                                  latestWeatherData['windDirectionValue']),
+                              child: const Icon(
+                                Icons.arrow_upward,
+                                size: 24.0,
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 8.0),
                       Text(
