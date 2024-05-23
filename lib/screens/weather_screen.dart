@@ -29,7 +29,7 @@ class WeatherScreenState extends State<WeatherScreen> {
     });
   }
 
-  fetchWeather() async {
+  Future<void> fetchWeather() async {
     try {
       var data =
           await weatherService.fetchWeatherData(_selectedTime, _selectedDate);
@@ -60,17 +60,17 @@ class WeatherScreenState extends State<WeatherScreen> {
 
     latestWeatherData = {
       'temperature': tempData.containsKey('TMP')
-          ? '온도: ${tempData['TMP']?['fcstValue']}°C'
-          : '온도: 정보 없음',
+          ? '${tempData['TMP']?['fcstValue']}℃'
+          : '정보 없음',
       'skyStatus': weatherService.getSkyStatus(tempData['SKY']?['fcstValue']),
       'humidity': tempData.containsKey('REH')
-          ? '습도: ${tempData['REH']?['fcstValue']}%'
-          : '습도: 정보 없음',
+          ? '습도 ${tempData['REH']?['fcstValue']}%'
+          : '습도 정보 없음',
       'windDirection': getWindDirection(vecValue),
       'windDirectionValue': vecValue,
       'windSpeed': tempData.containsKey('WSD')
-          ? '풍속: ${tempData['WSD']?['fcstValue']}m/s'
-          : '풍속: 정보 없음',
+          ? '${tempData['WSD']?['fcstValue']} m/s'
+          : '정보 없음',
       'precipitationType': getPrecipitationType(tempData['PTY']?['fcstValue']),
     };
   }
@@ -104,7 +104,7 @@ class WeatherScreenState extends State<WeatherScreen> {
 
   String getWindDirection(double? windDirectionValue) {
     if (windDirectionValue == null) {
-      return '풍향: 정보 없음';
+      return '정보 없음';
     }
 
     List<String> directions = [
@@ -127,7 +127,7 @@ class WeatherScreenState extends State<WeatherScreen> {
     ];
 
     int index = ((windDirectionValue + 11.25) % 360 ~/ 22.5).toInt();
-    return '풍향: ${directions[index]}';
+    return directions[index];
   }
 
   double getWindDirectionAngle(double? windDirectionValue) {
@@ -140,102 +140,166 @@ class WeatherScreenState extends State<WeatherScreen> {
 
   String getPrecipitationType(dynamic precipitationValue) {
     if (precipitationValue == null) {
-      return '강수 형태: 정보 없음';
+      return '강수: 정보 없음';
     }
     switch (precipitationValue.toString()) {
       case '0':
-        return '강수 형태: 없음';
+        return '강수 없음';
       case '1':
-        return '강수 형태: 비';
+        return '강수 비';
       case '2':
-        return '강수 형태: 비/눈';
+        return '강수 비/눈';
       case '3':
-        return '강수 형태: 눈';
+        return '강수 눈';
       case '4':
-        return '강수 형태: 소나기';
+        return '강수 소나기';
       default:
-        return '강수 형태: 정보 없음';
+        return '강수 정보 없음';
+    }
+  }
+
+  IconData getWeatherIcon(String skyStatus, String precipitationType) {
+    if (precipitationType != '강수 없음') {
+      switch (precipitationType) {
+        case '강수 비':
+          return Icons.grain;
+        case '강수 비/눈':
+          return Icons.ac_unit;
+        case '강수 눈':
+          return Icons.ac_unit;
+        case '강수 소나기':
+          return Icons.grain;
+        default:
+          return Icons.help;
+      }
+    } else {
+      switch (skyStatus) {
+        case '맑음':
+          return Icons.wb_sunny;
+        case '구름조금':
+          return Icons.cloud_queue;
+        case '구름많음':
+          return Icons.cloud;
+        case '흐림':
+          return Icons.cloud_queue;
+        default:
+          return Icons.help;
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              _address,
-              style: const TextStyle(fontSize: 18.0),
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.33,
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                _address,
+                style: const TextStyle(fontSize: 18.0),
+              ),
             ),
-          ),
-          latestWeatherData.isNotEmpty
-              ? Container(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        latestWeatherData['temperature'],
-                        style: const TextStyle(fontSize: 18.0),
-                      ),
-                      const SizedBox(height: 8.0),
-                      Text(
-                        latestWeatherData['skyStatus'],
-                        style: const TextStyle(fontSize: 18.0),
-                      ),
-                      const SizedBox(height: 8.0),
-                      Text(
-                        latestWeatherData['humidity'],
-                        style: const TextStyle(fontSize: 18.0),
-                      ),
-                      const SizedBox(height: 8.0),
-                      Row(
-                        children: [
-                          Text(
-                            latestWeatherData['windDirection'] ?? '풍향: 정보 없음',
-                            style: const TextStyle(fontSize: 18.0),
-                          ),
-                          const SizedBox(width: 8.0),
-                          if (latestWeatherData['windDirectionValue'] != null)
-                            Transform.rotate(
-                              angle: getWindDirectionAngle(
-                                  latestWeatherData['windDirectionValue']),
-                              child: const Icon(
-                                Icons.arrow_upward,
-                                size: 24.0,
+            latestWeatherData.isNotEmpty
+                ? Container(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              latestWeatherData['temperature'],
+                              style: const TextStyle(
+                                fontSize: 24.0,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 8.0),
-                      Text(
-                        latestWeatherData['windSpeed'],
-                        style: const TextStyle(fontSize: 18.0),
-                      ),
-                      const SizedBox(height: 8.0),
-                      Text(
-                        latestWeatherData['precipitationType'],
-                        style: const TextStyle(fontSize: 18.0),
-                      ),
-                    ],
+                            const SizedBox(width: 8.0),
+                            Icon(
+                              getWeatherIcon(latestWeatherData['skyStatus'],
+                                  latestWeatherData['precipitationType']),
+                              size: 40.0,
+                              color: Colors.orange,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Text(
+                          latestWeatherData['skyStatus'],
+                          style: const TextStyle(
+                            fontSize: 18.0,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 10.0),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            const Text('바람'),
+                            const SizedBox(width: 8.0),
+                            if (latestWeatherData['windDirectionValue'] != null)
+                              Transform.rotate(
+                                angle: getWindDirectionAngle(
+                                    latestWeatherData['windDirectionValue']),
+                                child: const Icon(Icons.navigation, size: 24.0),
+                              ),
+                            const SizedBox(width: 8.0),
+                            Text(
+                              '${latestWeatherData['windDirection']} ${latestWeatherData['windSpeed']}',
+                              style: const TextStyle(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          latestWeatherData['humidity'],
+                          style: const TextStyle(
+                            fontSize: 18.0,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          latestWeatherData['precipitationType'],
+                          style: const TextStyle(
+                            fontSize: 18.0,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Container(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      weatherDataMessage,
+                      style: const TextStyle(fontSize: 18.0),
+                    ),
                   ),
-                )
-              : Container(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    weatherDataMessage,
-                    style: const TextStyle(fontSize: 18.0),
-                  ),
-                ),
-          _error.isNotEmpty
-              ? Text(
-                  _error,
-                  style: const TextStyle(color: Colors.red),
-                )
-              : Container(),
-        ],
+            _error.isNotEmpty
+                ? Text(
+                    _error,
+                    style: const TextStyle(color: Colors.red),
+                  )
+                : Container(),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: () {
+                  fetchWeather();
+                  getPositionAndAddress();
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
