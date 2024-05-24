@@ -53,7 +53,7 @@ class WeatherScreenState extends State<WeatherScreen> {
     }
 
     var vecValue = tempData['VEC'] != null
-        ? double.tryParse(tempData['VEC']!['fcstValue'].toString())
+        ? double.tryParse(tempData['VEC']?['fcstValue']?.toString() ?? '')
         : null;
 
     print('Processed Weather Data: $tempData');
@@ -62,7 +62,8 @@ class WeatherScreenState extends State<WeatherScreen> {
       'temperature': tempData.containsKey('TMP')
           ? '${tempData['TMP']?['fcstValue']}℃'
           : '정보 없음',
-      'skyStatus': weatherService.getSkyStatus(tempData['SKY']?['fcstValue']),
+      'skyStatus': weatherService
+          .getSkyStatus(tempData['SKY']?['fcstValue']?.toString() ?? ''),
       'humidity': tempData.containsKey('REH')
           ? '습도 ${tempData['REH']?['fcstValue']}%'
           : '습도 정보 없음',
@@ -71,7 +72,8 @@ class WeatherScreenState extends State<WeatherScreen> {
       'windSpeed': tempData.containsKey('WSD')
           ? '${tempData['WSD']?['fcstValue']} m/s'
           : '정보 없음',
-      'precipitationType': getPrecipitationType(tempData['PTY']?['fcstValue']),
+      'precipitationType':
+          getPrecipitationType(tempData['PTY']?['fcstValue']?.toString() ?? ''),
     };
   }
 
