@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
@@ -8,11 +7,10 @@ import '../providers/alarm_provider.dart';
 import 'weather_screen.dart';
 import 'full_screen_alarm.dart';
 import '../main.dart';
+import '../utils/alarm_helper.dart'; // import AlarmHelper
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  static const platform = MethodChannel('com.example.yourapp/wakelock');
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +20,7 @@ class HomeScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          const WeatherScreen(), // 현재 위치의 날씨 정보를 표시
+          const WeatherScreen(),
           Expanded(
             child: Consumer<AlarmProvider>(
               builder: (context, alarmProvider, child) {
@@ -138,37 +136,8 @@ class HomeScreen extends StatelessWidget {
   }
 
   static Future<void> _alarmCallback() async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'alarm_channel',
-      'Alarm Channel',
-      channelDescription: 'Channel for Alarm notifications',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: false,
-      sound: RawResourceAndroidNotificationSound('alarm_sound'),
-      fullScreenIntent: true,
-    );
-
-    const NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
-
-    await flutterLocalNotificationsPlugin.show(
-      0,
-      'Alarm',
-      'It\'s time!',
-      platformChannelSpecifics,
-      payload: 'Alarm payload',
-    );
-
+    await AlarmHelper.triggerAlarm(0);
     WidgetsFlutterBinding.ensureInitialized();
-
-    try {
-      await platform.invokeMethod('acquireWakeLock');
-    } on PlatformException catch (e) {
-      print("Failed to acquire wake lock: '${e.message}'.");
-    }
-
     runApp(const MaterialApp(
       home: FullScreenAlarmScreen(),
     ));
@@ -176,7 +145,7 @@ class HomeScreen extends StatelessWidget {
 
   static Future<void> _setAlarm() async {
     await AndroidAlarmManager.oneShot(
-      const Duration(seconds: 5), // 예시로 5초 후에 알람이 울리도록 설정
+      const Duration(seconds: 5),
       0,
       _alarmCallback,
       exact: true,

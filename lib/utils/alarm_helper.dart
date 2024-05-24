@@ -32,9 +32,10 @@ class AlarmHelper {
 
     await flutterLocalNotificationsPlugin.show(
       id,
-      'Alarm',
-      'It\'s time!',
+      '알람',
+      '알람이 울립니다!',
       platformChannelSpecifics,
+      payload: 'Alarm payload',
     );
   }
 }
