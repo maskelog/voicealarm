@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
@@ -10,6 +11,8 @@ import '../main.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
+
+  static const platform = MethodChannel('com.example.yourapp/wakelock');
 
   @override
   Widget build(BuildContext context) {
@@ -159,6 +162,13 @@ class HomeScreen extends StatelessWidget {
     );
 
     WidgetsFlutterBinding.ensureInitialized();
+
+    try {
+      await platform.invokeMethod('acquireWakeLock');
+    } on PlatformException catch (e) {
+      print("Failed to acquire wake lock: '${e.message}'.");
+    }
+
     runApp(const MaterialApp(
       home: FullScreenAlarmScreen(),
     ));

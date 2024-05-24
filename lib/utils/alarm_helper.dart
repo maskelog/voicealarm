@@ -17,19 +17,23 @@ class AlarmHelper {
   static Future<void> triggerAlarm(int id) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
-      'your channel id',
-      'your channel name',
-      channelDescription: 'your channel description',
+      'alarm_channel',
+      'Alarm Channel',
+      channelDescription: 'Channel for Alarm notifications',
       importance: Importance.max,
       priority: Priority.high,
       showWhen: false,
+      sound: RawResourceAndroidNotificationSound('alarm_sound'),
+      fullScreenIntent: true,
     );
+
     const NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
+
     await flutterLocalNotificationsPlugin.show(
       id,
-      '알람',
-      '알람이 울립니다!',
+      'Alarm',
+      'It\'s time!',
       platformChannelSpecifics,
     );
   }

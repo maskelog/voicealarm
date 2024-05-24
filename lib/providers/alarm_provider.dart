@@ -46,7 +46,7 @@ class AlarmProvider with ChangeNotifier {
     AndroidAlarmManager.oneShotAt(
       alarmTime,
       alarmId,
-      AlarmHelper.triggerAlarm,
+      () => AlarmHelper.triggerAlarm(alarmId),
       exact: true,
       wakeup: true,
     );

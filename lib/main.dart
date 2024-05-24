@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_voice_alarm/utils/alarm_helper.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
@@ -14,6 +15,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load();
   await AndroidAlarmManager.initialize();
+  await AlarmHelper.initialize();
   await _initializeNotifications();
   await _requestExactAlarmPermission();
   runApp(const MyApp());
