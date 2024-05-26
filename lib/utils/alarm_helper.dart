@@ -6,17 +6,24 @@ class AlarmHelper {
 
   static Future<void> initializeNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@drawable/app_icon');
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const InitializationSettings initializationSettings =
         InitializationSettings(
       android: initializationSettingsAndroid,
     );
 
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    final bool? initialized = await flutterLocalNotificationsPlugin
+        .initialize(initializationSettings);
+    if (initialized != null && initialized) {
+      print('Notifications initialized successfully');
+    } else {
+      print('Failed to initialize notifications');
+    }
   }
 
   static Future<void> triggerAlarm(int id) async {
+    print('Triggering alarm with id $id');
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
       'alarm_channel',
@@ -39,5 +46,7 @@ class AlarmHelper {
       '설정된 알람이 울립니다!',
       platformChannelSpecifics,
     );
+
+    print('Alarm notification should be shown now');
   }
 }

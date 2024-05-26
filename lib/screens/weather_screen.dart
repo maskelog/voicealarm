@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/weather_service.dart';
 import '../services/vworld_address.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -23,8 +24,19 @@ class WeatherScreenState extends State<WeatherScreen> {
   @override
   void initState() {
     super.initState();
-    fetchWeather();
-    getPositionAndAddress();
+    requestLocationPermission();
+  }
+
+  Future<void> requestLocationPermission() async {
+    PermissionStatus status = await Permission.location.request();
+    if (status.isGranted) {
+      fetchWeather();
+      getPositionAndAddress();
+    } else {
+      setState(() {
+        _error = '위치 권한이 거부되었습니다. 설정에서 권한을 허용해주세요.';
+      });
+    }
   }
 
   fetchWeather() async {
@@ -52,8 +64,6 @@ class WeatherScreenState extends State<WeatherScreen> {
     var vecValue = tempData['VEC'] != null
         ? double.tryParse(tempData['VEC']!['fcstValue'].toString())
         : null;
-
-    print('Processed Weather Data: $tempData');
 
     latestWeatherData = {
       'temperature': tempData.containsKey('TMP')
