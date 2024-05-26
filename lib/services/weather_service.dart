@@ -90,7 +90,7 @@ class WeatherService {
     return '${time.hour.toString().padLeft(2, '0')}00';
   }
 
-  String getSkyStatus(String fcstValue) {
+  String getSkyStatus(String? fcstValue) {
     switch (fcstValue) {
       case '1':
         return '맑음';

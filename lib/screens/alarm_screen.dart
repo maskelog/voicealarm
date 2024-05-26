@@ -7,7 +7,7 @@ class AlarmScreen extends StatefulWidget {
   final Alarm? alarm;
   final int? index;
 
-  const AlarmScreen({Key? key, this.alarm, this.index}) : super(key: key);
+  const AlarmScreen({super.key, this.alarm, this.index});
 
   @override
   AlarmScreenState createState() => AlarmScreenState();
@@ -48,18 +48,26 @@ class AlarmScreenState extends State<AlarmScreen> {
             ),
             const SizedBox(height: 20),
             const Text('반복 설정:'),
+            const SizedBox(height: 10),
             Wrap(
-              spacing: 8.0, // Chip 간의 간격
-              runSpacing: 4.0, // 줄 간의 간격
+              spacing: 8.0,
+              runSpacing: 8.0,
               children: List.generate(7, (index) {
-                return FilterChip(
-                  label: Text(['월', '화', '수', '목', '금', '토', '일'][index]),
-                  selected: _repeatDays[index],
-                  onSelected: (bool selected) {
+                return GestureDetector(
+                  onTap: () {
                     setState(() {
-                      _repeatDays[index] = selected;
+                      _repeatDays[index] = !_repeatDays[index];
                     });
                   },
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundColor:
+                        _repeatDays[index] ? Colors.blue : Colors.grey,
+                    child: Text(
+                      ['월', '화', '수', '목', '금', '토', '일'][index],
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
                 );
               }),
             ),

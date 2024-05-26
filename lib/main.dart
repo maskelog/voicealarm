@@ -17,8 +17,10 @@ Future<void> main() async {
   await permissionHandler.requestAllPermissions(); // 모든 필요한 권한 요청
 
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => AlarmProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AlarmProvider()),
+      ],
       child: const MyApp(),
     ),
   );
