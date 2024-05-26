@@ -48,7 +48,7 @@ class AlarmProvider with ChangeNotifier {
     final bool scheduled = await AndroidAlarmManager.oneShotAt(
       alarmTime,
       alarmId,
-      () => AlarmHelper.triggerAlarm(alarmId),
+      AlarmHelper.triggerAlarm,
       exact: true,
       wakeup: true,
     );
