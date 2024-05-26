@@ -26,7 +26,7 @@ class AlarmProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void _scheduleAlarm(Alarm alarm) async {
+  void _scheduleAlarm(Alarm alarm) {
     final time = TimeOfDay(hour: alarm.time.hour, minute: alarm.time.minute);
     final now = DateTime.now();
     DateTime alarmTime = DateTime(
@@ -42,21 +42,20 @@ class AlarmProvider with ChangeNotifier {
     }
 
     final int alarmId = alarm.id.remainder(100000);
-
     print('Scheduling alarm at $alarmTime with id $alarmId');
 
-    final bool scheduled = await AndroidAlarmManager.oneShotAt(
+    AndroidAlarmManager.oneShotAt(
       alarmTime,
       alarmId,
       AlarmHelper.triggerAlarm,
       exact: true,
       wakeup: true,
-    );
-
-    if (scheduled) {
-      print('Alarm scheduled successfully');
-    } else {
-      print('Failed to schedule alarm');
-    }
+    ).then((bool success) {
+      if (success) {
+        print('Alarm scheduled successfully at $alarmTime with id $alarmId');
+      } else {
+        print('Failed to schedule alarm at $alarmTime with id $alarmId');
+      }
+    });
   }
 }
