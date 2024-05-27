@@ -1,5 +1,5 @@
-import 'package:flutter_alarm_clock/model/model.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_voice_alarm/models/model.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 class AlarmHelper {

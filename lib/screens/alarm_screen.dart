@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_voice_alarm/providers/alarm_provider.dart';
 import 'package:provider/provider.dart';
 import '../models/alarm.dart';
-import '../providers/alarm_provider.dart';
 
 class AlarmScreen extends StatefulWidget {
   final Alarm? alarm;
   final int? index;
 
-  const AlarmScreen({super.key, this.alarm, this.index});
+  const AlarmScreen({Key? key, this.alarm, this.index}) : super(key: key);
 
   @override
   AlarmScreenState createState() => AlarmScreenState();
@@ -48,26 +48,18 @@ class AlarmScreenState extends State<AlarmScreen> {
             ),
             const SizedBox(height: 20),
             const Text('반복 설정:'),
-            const SizedBox(height: 10),
             Wrap(
               spacing: 8.0,
-              runSpacing: 8.0,
+              runSpacing: 4.0,
               children: List.generate(7, (index) {
-                return GestureDetector(
-                  onTap: () {
+                return FilterChip(
+                  label: Text(['월', '화', '수', '목', '금', '토', '일'][index]),
+                  selected: _repeatDays[index],
+                  onSelected: (bool selected) {
                     setState(() {
-                      _repeatDays[index] = !_repeatDays[index];
+                      _repeatDays[index] = selected;
                     });
                   },
-                  child: CircleAvatar(
-                    radius: 20,
-                    backgroundColor:
-                        _repeatDays[index] ? Colors.blue : Colors.grey,
-                    child: Text(
-                      ['월', '화', '수', '목', '금', '토', '일'][index],
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
                 );
               }),
             ),
@@ -105,7 +97,8 @@ class AlarmScreenState extends State<AlarmScreen> {
 
     final alarmProvider = Provider.of<AlarmProvider>(context, listen: false);
     if (widget.index == null) {
-      alarmProvider.addAlarm(newAlarm);
+      alarmProvider.setAlarm(newAlarm.title, newAlarm.time.format(context),
+          true, 'Everyday', newAlarm.id, DateTime.now().millisecondsSinceEpoch);
     } else {
       alarmProvider.updateAlarm(widget.index!, newAlarm);
     }

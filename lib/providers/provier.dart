@@ -1,9 +1,8 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_voice_alarm/main.dart';
-import 'package:flutter_voice_alarm/models/alarm.dart';
 import 'package:flutter_voice_alarm/models/model.dart';
-import 'package:flutter_voice_alarm/screens/full_screen_alarm.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
@@ -12,65 +11,49 @@ import 'package:timezone/timezone.dart' as tz;
 class AlarmProvider extends ChangeNotifier {
   late SharedPreferences preferences;
 
-  List<Model> alarmList = [];
+  List<Model> modelist = [];
 
-  List<String> listOfString = [];
+  List<String> listofstring = [];
 
   FlutterLocalNotificationsPlugin? flutterLocalNotificationsPlugin;
 
   late BuildContext context;
 
-  void setAlarm(String label, String dateTime, bool check, String repeat,
+  void setAlaram(String label, String dateTime, bool check, String repeat,
       int id, int milliseconds) {
-    alarmList.add(Model(
+    modelist.add(Model(
         label: label,
         dateTime: dateTime,
         check: check,
         when: repeat,
         id: id,
         milliseconds: milliseconds));
-    setData();
+    notifyListeners();
   }
 
   void editSwitch(int index, bool check) {
-    alarmList[index].check = check;
-    setData();
-  }
-
-  void updateAlarm(int index, Alarm alarm) {
-    String formattedTime =
-        "${alarm.time.hour.toString().padLeft(2, '0')}:${alarm.time.minute.toString().padLeft(2, '0')}";
-    alarmList[index] = Model(
-      label: alarm.title,
-      dateTime: formattedTime,
-      check: true,
-      when: alarm.repeatDays.every((day) => day) ? "Everyday" : "none",
-      id: alarm.id,
-      milliseconds: DateTime.now().millisecondsSinceEpoch,
-    );
-    setData();
-  }
-
-  void removeAlarm(int index) {
-    alarmList.removeAt(index);
-    setData();
+    modelist[index].check = check;
+    notifyListeners();
   }
 
   Future<void> getData() async {
     preferences = await SharedPreferences.getInstance();
 
-    List<String>? comingList = preferences.getStringList("data");
+    List<String>? cominglist = preferences.getStringList("data");
 
-    if (comingList != null) {
-      alarmList =
-          comingList.map((e) => Model.fromJson(json.decode(e))).toList();
+    if (cominglist != null) {
+      modelist = cominglist.map((e) => Model.fromJson(json.decode(e))).toList();
+    } else {
+      modelist = [];
     }
+
     notifyListeners();
   }
 
   void setData() {
-    listOfString = alarmList.map((e) => json.encode(e.toJson())).toList();
-    preferences.setStringList("data", listOfString);
+    listofstring = modelist.map((e) => json.encode(e.toJson())).toList();
+    preferences.setStringList("data", listofstring);
+
     notifyListeners();
   }
 
@@ -114,9 +97,9 @@ class AlarmProvider extends ChangeNotifier {
         payload: 'item x');
   }
 
-  Future<void> scheduleNotification(DateTime dateTime, int randomNumber) async {
+  Future<void> scheduleNotification(DateTime datetime, int randomNumber) async {
     int newTime =
-        dateTime.millisecondsSinceEpoch - DateTime.now().millisecondsSinceEpoch;
+        datetime.millisecondsSinceEpoch - DateTime.now().millisecondsSinceEpoch;
     await flutterLocalNotificationsPlugin!.zonedSchedule(
         randomNumber,
         'Alarm Clock',
@@ -137,40 +120,5 @@ class AlarmProvider extends ChangeNotifier {
 
   Future<void> cancelNotification(int notificationId) async {
     await flutterLocalNotificationsPlugin!.cancel(notificationId);
-  }
-
-  static Future<void> alarmCallback() async {
-    print('Alarm callback triggered!');
-
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'alarm_channel',
-      'Alarm Channel',
-      channelDescription: 'Channel for Alarm notifications',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: false,
-      sound: RawResourceAndroidNotificationSound('alarm_sound'),
-      fullScreenIntent: true,
-    );
-
-    const NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
-
-    FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-        FlutterLocalNotificationsPlugin();
-
-    await flutterLocalNotificationsPlugin.show(
-      0,
-      'Alarm',
-      'It\'s time!',
-      platformChannelSpecifics,
-      payload: 'Alarm payload',
-    );
-
-    WidgetsFlutterBinding.ensureInitialized();
-    runApp(const MaterialApp(
-      home: FullScreenAlarmScreen(),
-    ));
   }
 }

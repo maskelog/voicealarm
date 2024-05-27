@@ -1,8 +1,7 @@
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_alarm_clock/model/model.dart';
-import 'package:flutter_alarm_clock/provider/alarm_provider.dart';
-import 'package:flutter_alarm_clock/utils/alarm_helper.dart';
+import 'package:flutter_voice_alarm/models/model.dart';
+import 'package:flutter_voice_alarm/providers/alarm_provider.dart';
+import 'package:flutter_voice_alarm/utils/alarm_helper.dart';
 import 'package:provider/provider.dart';
 import 'weather_screen.dart';
 

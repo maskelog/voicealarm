@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_alarm_clock/services/vworld_address_service.dart';
-import 'package:flutter_alarm_clock/services/weather_service.dart';
-import 'package:flutter_alarm_clock/utils/location_helper.dart';
+import 'package:flutter_voice_alarm/services/vworld_address_service.dart';
+import 'package:flutter_voice_alarm/services/weather_service.dart';
+import 'package:flutter_voice_alarm/utils/location_helper.dart';
 import 'package:geolocator/geolocator.dart';
 
 class WeatherScreen extends StatefulWidget {

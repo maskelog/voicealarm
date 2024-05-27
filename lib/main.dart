@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_alarm_clock/screen/alarm_list_screen.dart';
-import 'package:flutter_alarm_clock/screen/weather_screen.dart';
-import 'package:flutter_alarm_clock/utils/alarm_helper.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_voice_alarm/screens/alarm_list_screen.dart';
+import 'package:flutter_voice_alarm/screens/weather_screen.dart';
+import 'package:flutter_voice_alarm/utils/alarm_helper.dart';
 import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
 
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
