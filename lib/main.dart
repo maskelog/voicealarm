@@ -1,25 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_alarm_clock/screen/alarm_list_screen.dart';
+import 'package:flutter_alarm_clock/screen/weather_screen.dart';
+import 'package:flutter_alarm_clock/utils/alarm_helper.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:provider/provider.dart';
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
-import 'screens/home_screen.dart';
-import 'providers/alarm_provider.dart';
-import 'utils/alarm_helper.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await AndroidAlarmManager.initialize();
-  await AlarmHelper.initializeNotifications();
+Future<void> main() async {
   await dotenv.load(fileName: ".env");
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AlarmProvider()),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  tz.initializeTimeZones();
+  await AlarmHelper.initialize();
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -33,6 +24,32 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       home: const HomeScreen(),
+    );
+  }
+}
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  HomeScreenState createState() => HomeScreenState();
+}
+
+class HomeScreenState extends State<HomeScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('알람 앱'),
+      ),
+      body: const Column(
+        children: [
+          WeatherScreen(),
+          Expanded(
+            child: AlarmListScreen(),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,73 +1,47 @@
+import 'package:flutter_alarm_clock/model/model.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter/material.dart';
-import '../screens/full_screen_alarm.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class AlarmHelper {
-  static final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+  static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  static Future<void> initializeNotifications() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-
+  static Future<void> initialize() async {
     const InitializationSettings initializationSettings =
         InitializationSettings(
-      android: initializationSettingsAndroid,
+      android: AndroidInitializationSettings('app_icon'), // 앱 아이콘 설정
     );
 
-    final bool? initialized = await flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) async {
-        // Alarm notification tapped action
-        _showFullScreenAlarm();
-      },
-    );
-
-    if (initialized != null && initialized) {
-      print('Notifications initialized successfully');
-    } else {
-      print('Failed to initialize notifications');
-    }
+    await _notificationsPlugin.initialize(initializationSettings);
   }
 
-  static Future<void> triggerAlarm(int id) async {
-    print('Triggering alarm with id $id at ${DateTime.now()}');
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'alarm_channel',
-      'Alarm Notifications',
-      channelDescription: 'Channel for Alarm notifications',
-      importance: Importance.high,
+  static Future<void> scheduleAlarm(Model alarmModel) async {
+    final DateTime dateTime =
+        DateTime.fromMillisecondsSinceEpoch(alarmModel.milliseconds);
+    final tz.TZDateTime tzDateTime = tz.TZDateTime.from(dateTime, tz.local);
+
+    const androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      'alarm_channel', // channel id
+      '알람', // channel name
+      channelDescription: '알람을 위한 채널', // channel description
+      importance: Importance.max,
       priority: Priority.high,
-      sound: RawResourceAndroidNotificationSound('alarm_sound'),
-      playSound: true,
-      enableVibration: true,
-      fullScreenIntent: true, // Ensures full-screen intent
+      icon: 'app_icon', // 알람 아이콘 설정
     );
 
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+    const platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
     );
 
-    try {
-      await flutterLocalNotificationsPlugin.show(
-        id,
-        '알람',
-        '설정된 알람이 울립니다!',
-        platformChannelSpecifics,
-        payload: 'AlarmPayload', // Custom payload to identify the alarm
-      );
-      print('Alarm notification shown successfully');
-    } catch (e) {
-      print('Failed to show alarm notification: $e');
-    }
-  }
-
-  static void _showFullScreenAlarm() {
-    WidgetsFlutterBinding.ensureInitialized();
-    runApp(const MaterialApp(
-      home: FullScreenAlarmScreen(),
-      debugShowCheckedModeBanner: false,
-    ));
+    await _notificationsPlugin.zonedSchedule(
+      alarmModel.id,
+      alarmModel.label,
+      '알람이 울립니다',
+      tzDateTime,
+      platformChannelSpecifics,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
   }
 }

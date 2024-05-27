@@ -1,7 +1,9 @@
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_alarm_clock/model/model.dart';
+import 'package:flutter_alarm_clock/provider/alarm_provider.dart';
+import 'package:flutter_alarm_clock/utils/alarm_helper.dart';
 import 'package:provider/provider.dart';
-import '../providers/alarm_provider.dart';
-import 'alarm_screen.dart';
 import 'weather_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -10,87 +12,64 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            const WeatherScreen(), // 현재 위치의 날씨 정보를 표시
-            Expanded(
-              child: Consumer<AlarmProvider>(
-                builder: (context, alarmProvider, child) {
-                  return ListView.builder(
-                    itemCount: alarmProvider.alarms.length,
-                    itemBuilder: (context, index) {
-                      final alarm = alarmProvider.alarms[index];
-                      return Card(
-                        child: ListTile(
-                          title: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                alarm.title,
-                                style: const TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                alarm.repeatDays.every((day) => day)
-                                    ? '매일 반복'
-                                    : alarm.repeatDays
-                                        .asMap()
-                                        .entries
-                                        .where((entry) => entry.value)
-                                        .map((entry) => [
-                                              '월',
-                                              '화',
-                                              '수',
-                                              '목',
-                                              '금',
-                                              '토',
-                                              '일'
-                                            ][entry.key])
-                                        .join(', '),
-                                style: const TextStyle(
-                                    fontSize: 14, color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                          trailing: Text(
-                            alarm.time.format(context),
-                            style: const TextStyle(
-                                fontSize: 24, fontWeight: FontWeight.bold),
-                          ),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => AlarmScreen(
-                                  alarm: alarm,
-                                  index: index,
-                                ),
-                              ),
-                            );
-                          },
-                          onLongPress: () {
-                            _showDeleteDialog(context, alarmProvider, index);
-                          },
+      appBar: AppBar(
+        title: const Text('Alarm App'),
+      ),
+      body: Column(
+        children: [
+          const WeatherScreen(), // WeatherScreen 추가
+          Expanded(
+            child: Consumer<AlarmProvider>(
+              builder: (context, alarmProvider, child) {
+                return ListView.builder(
+                  itemCount: alarmProvider.alarmList.length,
+                  itemBuilder: (context, index) {
+                    final alarm = alarmProvider.alarmList[index];
+                    return Card(
+                      child: ListTile(
+                        title: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              alarm.label,
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              alarm.when,
+                              style: const TextStyle(
+                                  fontSize: 14, color: Colors.grey),
+                            ),
+                          ],
                         ),
-                      );
-                    },
-                  );
-                },
-              ),
+                        trailing: Text(
+                          alarm.dateTime,
+                          style: const TextStyle(
+                              fontSize: 24, fontWeight: FontWeight.bold),
+                        ),
+                        onTap: () {
+                          // 알람 수정 기능 추가
+                        },
+                        onLongPress: () {
+                          _showDeleteDialog(context, alarmProvider, index);
+                        },
+                      ),
+                    );
+                  },
+                );
+              },
             ),
-          ],
-        ),
+          ),
+          ElevatedButton(
+            onPressed: () => _setAlarm(), // 알람 설정 버튼
+            child: const Text('Set Test Alarm'),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AlarmScreen(),
-            ),
-          );
+          // 알람 추가 화면으로 이동
         },
         child: const Icon(Icons.add),
       ),
@@ -115,7 +94,10 @@ class HomeScreen extends StatelessWidget {
             TextButton(
               child: const Text('삭제'),
               onPressed: () {
-                alarmProvider.removeAlarm(index);
+                alarmProvider
+                    .cancelNotification(alarmProvider.alarmList[index].id);
+                alarmProvider.alarmList.removeAt(index);
+                alarmProvider.setData();
                 Navigator.of(context).pop();
               },
             ),
@@ -123,5 +105,18 @@ class HomeScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  static Future<void> _setAlarm() async {
+    final now = DateTime.now().add(const Duration(seconds: 5));
+    final alarmModel = Model(
+      label: '테스트 알람',
+      dateTime: now.toIso8601String(),
+      check: true,
+      when: '5초 후',
+      id: 0,
+      milliseconds: now.millisecondsSinceEpoch,
+    );
+    await AlarmHelper.scheduleAlarm(alarmModel); // 수정된 scheduleAlarm 호출
   }
 }

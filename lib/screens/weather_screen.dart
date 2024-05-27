@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_voice_alarm/services/vworld_address_service.dart';
-import '../services/weather_service.dart';
+import 'package:flutter_alarm_clock/services/vworld_address_service.dart';
+import 'package:flutter_alarm_clock/services/weather_service.dart';
+import 'package:flutter_alarm_clock/utils/location_helper.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -18,28 +18,18 @@ class WeatherScreenState extends State<WeatherScreen> {
   final TimeOfDay _selectedTime = TimeOfDay.now();
   final DateTime _selectedDate = DateTime.now();
   String _address = '주소를 불러오는 중...';
-  bool _isFetchingAddress = false;
   String _error = '';
 
   @override
   void initState() {
     super.initState();
-    requestLocationPermission();
-  }
-
-  Future<void> requestLocationPermission() async {
-    PermissionStatus status = await Permission.location.request();
-    if (status.isGranted) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       fetchWeather();
       getPositionAndAddress();
-    } else {
-      setState(() {
-        _error = '위치 권한이 거부되었습니다. 설정에서 권한을 허용해주세요.';
-      });
-    }
+    });
   }
 
-  fetchWeather() async {
+  Future<void> fetchWeather() async {
     try {
       var data =
           await weatherService.fetchWeatherData(_selectedTime, _selectedDate);
@@ -50,6 +40,7 @@ class WeatherScreenState extends State<WeatherScreen> {
     } catch (e) {
       setState(() {
         weatherDataMessage = "날씨 정보를 불러오는데 실패했습니다: $e";
+        print('Error fetching weather data: $e');
       });
     }
   }
@@ -62,134 +53,264 @@ class WeatherScreenState extends State<WeatherScreen> {
     }
 
     var vecValue = tempData['VEC'] != null
-        ? double.tryParse(tempData['VEC']!['fcstValue'].toString())
+        ? double.tryParse(tempData['VEC']?['fcstValue']?.toString() ?? '')
         : null;
 
+    print('Processed Weather Data: $tempData');
+
     latestWeatherData = {
-      'temperature': tempData.containsKey('TMP')
-          ? '온도: ${tempData['TMP']?['fcstValue']}°C'
-          : '온도: 정보 없음',
-      'skyStatus': weatherService.getSkyStatus(tempData['SKY']?['fcstValue']),
-      'humidity': tempData.containsKey('REH')
-          ? '습도: ${tempData['REH']?['fcstValue']}%'
-          : '습도: 정보 없음',
+      'temperature':
+          tempData.containsKey('TMP') && tempData['TMP']?['fcstValue'] != null
+              ? '${tempData['TMP']?['fcstValue']}℃'
+              : '정보 없음',
+      'skyStatus':
+          tempData.containsKey('SKY') && tempData['SKY']?['fcstValue'] != null
+              ? weatherService
+                  .getSkyStatus(tempData['SKY']?['fcstValue']?.toString() ?? '')
+              : '정보 없음',
+      'humidity':
+          tempData.containsKey('REH') && tempData['REH']?['fcstValue'] != null
+              ? '습도 ${tempData['REH']?['fcstValue']}%'
+              : '습도 정보 없음',
       'windDirection': getWindDirection(vecValue),
       'windDirectionValue': vecValue,
-      'windSpeed': tempData.containsKey('WSD')
-          ? '풍속: ${tempData['WSD']?['fcstValue']}m/s'
-          : '풍속: 정보 없음',
-      'precipitationType': getPrecipitationType(tempData['PTY']?['fcstValue']),
+      'windSpeed':
+          tempData.containsKey('WSD') && tempData['WSD']?['fcstValue'] != null
+              ? '${tempData['WSD']?['fcstValue']} m/s'
+              : '정보 없음',
+      'precipitationType':
+          tempData.containsKey('PTY') && tempData['PTY']?['fcstValue'] != null
+              ? getPrecipitationType(
+                  tempData['PTY']?['fcstValue']?.toString() ?? '')
+              : '정보 없음',
     };
   }
 
   Future<void> getPositionAndAddress() async {
     setState(() {
-      _isFetchingAddress = true;
       _error = '';
     });
 
     try {
-      Position? position = await Geolocator.getLastKnownPosition();
-      position ??= await Geolocator.getCurrentPosition();
-      String address = await getAddressFromCoordinates(position);
+      Position? position = await LocationHelper.determinePosition();
+      if (position == null) {
+        setState(() {
+          _address = '위치 정보를 가져오는데 실패했습니다.';
+        });
+        return;
+      }
+
+      String address = await VWorldAddressService.fetchAddress(
+          position.latitude, position.longitude);
       setState(() {
         _address = address;
-        print("Fetched address: $_address");
       });
     } catch (e) {
       setState(() {
-        _address = '위치를 불러오는데 실패했습니다: $e';
-        print("Error fetching address: $e");
-      });
-    } finally {
-      setState(() {
-        _isFetchingAddress = false;
+        _address = '주소를 가져오는데 실패했습니다: $e';
+        _error = e.toString();
       });
     }
   }
 
-  Future<String> getAddressFromCoordinates(Position position) async {
-    try {
-      double latitude = position.latitude;
-      double longitude = position.longitude;
-      String addressText =
-          await VWorldAddressService.fetchAddress(latitude, longitude);
-      print("Address text: $addressText");
-      return addressText;
-    } catch (e) {
-      print("Error in getAddressFromCoordinates: $e");
-      return '주소를 불러오는데 실패했습니다: $e';
+  String getWindDirection(double? windDirectionValue) {
+    if (windDirectionValue == null) {
+      return '정보 없음';
     }
+
+    List<String> directions = [
+      '북',
+      '북북동',
+      '북동',
+      '동북동',
+      '동',
+      '동남동',
+      '남동',
+      '남남동',
+      '남',
+      '남남서',
+      '남서',
+      '서남서',
+      '서',
+      '서북서',
+      '북서',
+      '북북서',
+    ];
+
+    int index = ((windDirectionValue + 11.25) % 360 ~/ 22.5).toInt();
+    return directions[index];
   }
 
-  String getWindDirection(double? vecValue) {
-    if (vecValue == null) {
-      return '풍향: 정보 없음';
+  double getWindDirectionAngle(double? windDirectionValue) {
+    if (windDirectionValue == null) {
+      return 0.0;
     }
-    if (vecValue >= 337.5 || vecValue < 22.5) {
-      return '풍향: 북';
-    } else if (vecValue >= 22.5 && vecValue < 67.5) {
-      return '풍향: 북동';
-    } else if (vecValue >= 67.5 && vecValue < 112.5) {
-      return '풍향: 동';
-    } else if (vecValue >= 112.5 && vecValue < 157.5) {
-      return '풍향: 남동';
-    } else if (vecValue >= 157.5 && vecValue < 202.5) {
-      return '풍향: 남';
-    } else if (vecValue >= 202.5 && vecValue < 247.5) {
-      return '풍향: 남서';
-    } else if (vecValue >= 247.5 && vecValue < 292.5) {
-      return '풍향: 서';
-    } else if (vecValue >= 292.5 && vecValue < 337.5) {
-      return '풍향: 북서';
-    } else {
-      return '풍향: 정보 없음';
-    }
+    return windDirectionValue * (3.1415926535897932 / 180);
   }
 
-  String getPrecipitationType(String? pty) {
-    switch (pty) {
+  String getPrecipitationType(dynamic precipitationValue) {
+    if (precipitationValue == null) {
+      return '강수: 정보 없음';
+    }
+    switch (precipitationValue.toString()) {
       case '0':
-        return '강수형태: 없음';
+        return '강수 없음';
       case '1':
-        return '강수형태: 비';
+        return '강수 비';
       case '2':
-        return '강수형태: 비/눈';
+        return '강수 비/눈';
       case '3':
-        return '강수형태: 눈';
+        return '강수 눈';
       case '4':
-        return '강수형태: 소나기';
+        return '강수 소나기';
       default:
-        return '강수형태: 정보 없음';
+        return '강수 정보 없음';
+    }
+  }
+
+  IconData getWeatherIcon(String skyStatus, String precipitationType) {
+    if (precipitationType != '강수 없음') {
+      switch (precipitationType) {
+        case '강수 비':
+          return Icons.grain;
+        case '강수 비/눈':
+          return Icons.ac_unit;
+        case '강수 눈':
+          return Icons.ac_unit;
+        case '강수 소나기':
+          return Icons.grain;
+        default:
+          return Icons.help;
+      }
+    } else {
+      switch (skyStatus) {
+        case '맑음':
+          return Icons.wb_sunny;
+        case '구름조금':
+          return Icons.cloud_queue;
+        case '구름많음':
+          return Icons.cloud;
+        case '흐림':
+          return Icons.cloud_queue;
+        default:
+          return Icons.help;
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        if (weatherDataMessage.isNotEmpty)
-          Text(weatherDataMessage)
-        else
-          Column(
-            children: [
-              Text(latestWeatherData['temperature'] ?? '온도: 정보 없음'),
-              Text(latestWeatherData['skyStatus'] ?? '하늘 상태: 정보 없음'),
-              Text(latestWeatherData['humidity'] ?? '습도: 정보 없음'),
-              Text(latestWeatherData['windDirection'] ?? '풍향: 정보 없음'),
-              Text(latestWeatherData['windSpeed'] ?? '풍속: 정보 없음'),
-              Text(latestWeatherData['precipitationType'] ?? '강수형태: 정보 없음'),
-              const SizedBox(height: 20),
-              Text(_address),
-            ],
-          ),
-        if (_isFetchingAddress) const CircularProgressIndicator(),
-        if (_error.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(_error, style: const TextStyle(color: Colors.red)),
-          ),
-      ],
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.33,
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                _address,
+                style: const TextStyle(fontSize: 18.0),
+              ),
+            ),
+            if (latestWeatherData.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          latestWeatherData['temperature'],
+                          style: const TextStyle(
+                            fontSize: 24.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 8.0),
+                        Icon(
+                          getWeatherIcon(latestWeatherData['skyStatus'],
+                              latestWeatherData['precipitationType']),
+                          size: 40.0,
+                          color: Colors.orange,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10.0),
+                    Text(
+                      latestWeatherData['skyStatus'],
+                      style: const TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 10.0),
+                    const SizedBox(height: 10.0),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        const Text('바람'),
+                        const SizedBox(width: 8.0),
+                        if (latestWeatherData['windDirectionValue'] != null)
+                          Transform.rotate(
+                            angle: getWindDirectionAngle(
+                                latestWeatherData['windDirectionValue']),
+                            child: const Icon(Icons.navigation, size: 24.0),
+                          ),
+                        const SizedBox(width: 8.0),
+                        Text(
+                          '${latestWeatherData['windDirection']} ${latestWeatherData['windSpeed']}',
+                          style: const TextStyle(
+                            fontSize: 18.0,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      latestWeatherData['humidity'],
+                      style: const TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      latestWeatherData['precipitationType'],
+                      style: const TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  weatherDataMessage,
+                  style: const TextStyle(fontSize: 18.0),
+                ),
+              ),
+            if (_error.isNotEmpty)
+              Text(
+                _error,
+                style: const TextStyle(color: Colors.red),
+              ),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: () {
+                  fetchWeather();
+                  getPositionAndAddress();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
