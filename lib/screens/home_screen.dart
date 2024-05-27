@@ -1,13 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:provider/provider.dart';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
-import 'alarm_screen.dart';
-import '../providers/alarm_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_alarm_clock/model/model.dart';
+import 'package:flutter_alarm_clock/provider/alarm_provider.dart';
+import 'package:flutter_alarm_clock/utils/alarm_helper.dart';
+import 'package:provider/provider.dart';
 import 'weather_screen.dart';
-import 'full_screen_alarm.dart';
-import '../main.dart';
-import '../utils/alarm_helper.dart'; // import AlarmHelper
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -20,62 +17,39 @@ class HomeScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          const WeatherScreen(),
+          const WeatherScreen(), // WeatherScreen 추가
           Expanded(
             child: Consumer<AlarmProvider>(
               builder: (context, alarmProvider, child) {
                 return ListView.builder(
-                  itemCount: alarmProvider.alarms.length,
+                  itemCount: alarmProvider.alarmList.length,
                   itemBuilder: (context, index) {
-                    final alarm = alarmProvider.alarms[index];
+                    final alarm = alarmProvider.alarmList[index];
                     return Card(
                       child: ListTile(
                         title: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              alarm.title,
+                              alarm.label,
                               style: const TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              alarm.repeatDays.every((day) => day)
-                                  ? '매일 반복'
-                                  : alarm.repeatDays
-                                      .asMap()
-                                      .entries
-                                      .where((entry) => entry.value)
-                                      .map((entry) => [
-                                            '월',
-                                            '화',
-                                            '수',
-                                            '목',
-                                            '금',
-                                            '토',
-                                            '일'
-                                          ][entry.key])
-                                      .join(', '),
+                              alarm.when,
                               style: const TextStyle(
                                   fontSize: 14, color: Colors.grey),
                             ),
                           ],
                         ),
                         trailing: Text(
-                          alarm.time.format(context),
+                          alarm.dateTime,
                           style: const TextStyle(
                               fontSize: 24, fontWeight: FontWeight.bold),
                         ),
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AlarmScreen(
-                                alarm: alarm,
-                                index: index,
-                              ),
-                            ),
-                          );
+                          // 알람 수정 기능 추가
                         },
                         onLongPress: () {
                           _showDeleteDialog(context, alarmProvider, index);
@@ -87,20 +61,15 @@ class HomeScreen extends StatelessWidget {
               },
             ),
           ),
-          const ElevatedButton(
-            onPressed: _setAlarm, // 알람 설정 버튼
-            child: Text('Set Test Alarm'),
+          ElevatedButton(
+            onPressed: () => _setAlarm(), // 알람 설정 버튼
+            child: const Text('Set Test Alarm'),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AlarmScreen(),
-            ),
-          );
+          // 알람 추가 화면으로 이동
         },
         child: const Icon(Icons.add),
       ),
@@ -125,7 +94,10 @@ class HomeScreen extends StatelessWidget {
             TextButton(
               child: const Text('삭제'),
               onPressed: () {
-                alarmProvider.removeAlarm(index);
+                alarmProvider
+                    .cancelNotification(alarmProvider.alarmList[index].id);
+                alarmProvider.alarmList.removeAt(index);
+                alarmProvider.setData();
                 Navigator.of(context).pop();
               },
             ),
@@ -135,21 +107,16 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  static Future<void> _alarmCallback() async {
-    await AlarmHelper.triggerAlarm(0);
-    WidgetsFlutterBinding.ensureInitialized();
-    runApp(const MaterialApp(
-      home: FullScreenAlarmScreen(),
-    ));
-  }
-
   static Future<void> _setAlarm() async {
-    await AndroidAlarmManager.oneShot(
-      const Duration(seconds: 5),
-      0,
-      _alarmCallback,
-      exact: true,
-      wakeup: true,
+    final now = DateTime.now().add(const Duration(seconds: 5));
+    final alarmModel = Model(
+      label: '테스트 알람',
+      dateTime: now.toIso8601String(),
+      check: true,
+      when: '5초 후',
+      id: 0,
+      milliseconds: now.millisecondsSinceEpoch,
     );
+    await AlarmHelper.scheduleAlarm(alarmModel); // 수정된 scheduleAlarm 호출
   }
 }

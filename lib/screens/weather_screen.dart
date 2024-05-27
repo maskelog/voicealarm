@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../services/weather_service.dart';
-import '../services/vworld_address_service.dart';
-import '../utils/location_helper.dart';
+import 'package:flutter_alarm_clock/services/vworld_address_service.dart';
+import 'package:flutter_alarm_clock/services/weather_service.dart';
+import 'package:flutter_alarm_clock/utils/location_helper.dart';
 import 'package:geolocator/geolocator.dart';
 
 class WeatherScreen extends StatefulWidget {
@@ -59,21 +59,30 @@ class WeatherScreenState extends State<WeatherScreen> {
     print('Processed Weather Data: $tempData');
 
     latestWeatherData = {
-      'temperature': tempData.containsKey('TMP')
-          ? '${tempData['TMP']?['fcstValue']}℃'
-          : '정보 없음',
-      'skyStatus': weatherService
-          .getSkyStatus(tempData['SKY']?['fcstValue']?.toString() ?? ''),
-      'humidity': tempData.containsKey('REH')
-          ? '습도 ${tempData['REH']?['fcstValue']}%'
-          : '습도 정보 없음',
+      'temperature':
+          tempData.containsKey('TMP') && tempData['TMP']?['fcstValue'] != null
+              ? '${tempData['TMP']?['fcstValue']}℃'
+              : '정보 없음',
+      'skyStatus':
+          tempData.containsKey('SKY') && tempData['SKY']?['fcstValue'] != null
+              ? weatherService
+                  .getSkyStatus(tempData['SKY']?['fcstValue']?.toString() ?? '')
+              : '정보 없음',
+      'humidity':
+          tempData.containsKey('REH') && tempData['REH']?['fcstValue'] != null
+              ? '습도 ${tempData['REH']?['fcstValue']}%'
+              : '습도 정보 없음',
       'windDirection': getWindDirection(vecValue),
       'windDirectionValue': vecValue,
-      'windSpeed': tempData.containsKey('WSD')
-          ? '${tempData['WSD']?['fcstValue']} m/s'
-          : '정보 없음',
+      'windSpeed':
+          tempData.containsKey('WSD') && tempData['WSD']?['fcstValue'] != null
+              ? '${tempData['WSD']?['fcstValue']} m/s'
+              : '정보 없음',
       'precipitationType':
-          getPrecipitationType(tempData['PTY']?['fcstValue']?.toString() ?? ''),
+          tempData.containsKey('PTY') && tempData['PTY']?['fcstValue'] != null
+              ? getPrecipitationType(
+                  tempData['PTY']?['fcstValue']?.toString() ?? '')
+              : '정보 없음',
     };
   }
 
@@ -136,7 +145,6 @@ class WeatherScreenState extends State<WeatherScreen> {
     if (windDirectionValue == null) {
       return 0.0;
     }
-
     return windDirectionValue * (3.1415926535897932 / 180);
   }
 
@@ -194,122 +202,114 @@ class WeatherScreenState extends State<WeatherScreen> {
   Widget build(BuildContext context) {
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.33,
-      child: Stack(
-        children: [
-          SingleChildScrollView(
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    _address,
-                    style: const TextStyle(fontSize: 18.0),
-                  ),
-                ),
-                latestWeatherData.isNotEmpty
-                    ? Container(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  latestWeatherData['temperature'],
-                                  style: const TextStyle(
-                                    fontSize: 24.0,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(width: 8.0),
-                                Icon(
-                                  getWeatherIcon(latestWeatherData['skyStatus'],
-                                      latestWeatherData['precipitationType']),
-                                  size: 40.0,
-                                  color: Colors.orange,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10.0),
-                            Text(
-                              latestWeatherData['skyStatus'],
-                              style: const TextStyle(
-                                fontSize: 18.0,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 10.0),
-                            const SizedBox(height: 10.0),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                const Text('바람'),
-                                const SizedBox(width: 8.0),
-                                if (latestWeatherData['windDirectionValue'] !=
-                                    null)
-                                  Transform.rotate(
-                                    angle: getWindDirectionAngle(
-                                        latestWeatherData[
-                                            'windDirectionValue']),
-                                    child: const Icon(Icons.navigation,
-                                        size: 24.0),
-                                  ),
-                                const SizedBox(width: 8.0),
-                                Text(
-                                  '${latestWeatherData['windDirection']} ${latestWeatherData['windSpeed']}',
-                                  style: const TextStyle(
-                                    fontSize: 18.0,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              latestWeatherData['humidity'],
-                              style: const TextStyle(
-                                fontSize: 18.0,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Text(
-                              latestWeatherData['precipitationType'],
-                              style: const TextStyle(
-                                fontSize: 18.0,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                _address,
+                style: const TextStyle(fontSize: 18.0),
+              ),
+            ),
+            if (latestWeatherData.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          latestWeatherData['temperature'],
+                          style: const TextStyle(
+                            fontSize: 24.0,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      )
-                    : Container(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          weatherDataMessage,
-                          style: const TextStyle(fontSize: 18.0),
+                        const SizedBox(width: 8.0),
+                        Icon(
+                          getWeatherIcon(latestWeatherData['skyStatus'],
+                              latestWeatherData['precipitationType']),
+                          size: 40.0,
+                          color: Colors.orange,
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 10.0),
+                    Text(
+                      latestWeatherData['skyStatus'],
+                      style: const TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.w500,
                       ),
-                _error.isNotEmpty
-                    ? Text(
-                        _error,
-                        style: const TextStyle(color: Colors.red),
-                      )
-                    : Container(),
-              ],
+                    ),
+                    const SizedBox(height: 10.0),
+                    const SizedBox(height: 10.0),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        const Text('바람'),
+                        const SizedBox(width: 8.0),
+                        if (latestWeatherData['windDirectionValue'] != null)
+                          Transform.rotate(
+                            angle: getWindDirectionAngle(
+                                latestWeatherData['windDirectionValue']),
+                            child: const Icon(Icons.navigation, size: 24.0),
+                          ),
+                        const SizedBox(width: 8.0),
+                        Text(
+                          '${latestWeatherData['windDirection']} ${latestWeatherData['windSpeed']}',
+                          style: const TextStyle(
+                            fontSize: 18.0,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      latestWeatherData['humidity'],
+                      style: const TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      latestWeatherData['precipitationType'],
+                      style: const TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  weatherDataMessage,
+                  style: const TextStyle(fontSize: 18.0),
+                ),
+              ),
+            if (_error.isNotEmpty)
+              Text(
+                _error,
+                style: const TextStyle(color: Colors.red),
+              ),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: () {
+                  fetchWeather();
+                  getPositionAndAddress();
+                },
+              ),
             ),
-          ),
-          Positioned(
-            bottom: 10,
-            right: 10,
-            child: IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () {
-                fetchWeather();
-                getPositionAndAddress();
-              },
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

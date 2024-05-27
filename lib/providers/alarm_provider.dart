@@ -42,6 +42,7 @@ class AlarmProvider with ChangeNotifier {
     }
 
     final int alarmId = alarm.id.remainder(100000);
+    print('Scheduling alarm at $alarmTime with id $alarmId');
 
     AndroidAlarmManager.oneShotAt(
       alarmTime,
@@ -49,6 +50,12 @@ class AlarmProvider with ChangeNotifier {
       () => AlarmHelper.triggerAlarm(alarmId),
       exact: true,
       wakeup: true,
-    );
+    ).then((bool success) {
+      if (success) {
+        print('Alarm scheduled successfully at $alarmTime with id $alarmId');
+      } else {
+        print('Failed to schedule alarm at $alarmTime with id $alarmId');
+      }
+    });
   }
 }

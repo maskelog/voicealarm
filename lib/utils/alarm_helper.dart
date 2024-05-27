@@ -1,41 +1,47 @@
+import 'package:flutter_alarm_clock/model/model.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class AlarmHelper {
-  static final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+  static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
   static Future<void> initialize() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('app_icon');
-
     const InitializationSettings initializationSettings =
-        InitializationSettings(android: initializationSettingsAndroid);
-
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-  }
-
-  static Future<void> triggerAlarm(int id) async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'alarm_channel',
-      'Alarm Channel',
-      channelDescription: 'Channel for Alarm notifications',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: false,
-      sound: RawResourceAndroidNotificationSound('alarm_sound'),
-      fullScreenIntent: true,
+        InitializationSettings(
+      android: AndroidInitializationSettings('app_icon'), // 앱 아이콘 설정
     );
 
-    const NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
+    await _notificationsPlugin.initialize(initializationSettings);
+  }
 
-    await flutterLocalNotificationsPlugin.show(
-      id,
-      '알람',
-      '알람이 울립니다!',
+  static Future<void> scheduleAlarm(Model alarmModel) async {
+    final DateTime dateTime =
+        DateTime.fromMillisecondsSinceEpoch(alarmModel.milliseconds);
+    final tz.TZDateTime tzDateTime = tz.TZDateTime.from(dateTime, tz.local);
+
+    const androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      'alarm_channel', // channel id
+      '알람', // channel name
+      channelDescription: '알람을 위한 채널', // channel description
+      importance: Importance.max,
+      priority: Priority.high,
+      icon: 'app_icon', // 알람 아이콘 설정
+    );
+
+    const platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+    );
+
+    await _notificationsPlugin.zonedSchedule(
+      alarmModel.id,
+      alarmModel.label,
+      '알람이 울립니다',
+      tzDateTime,
       platformChannelSpecifics,
-      payload: 'Alarm payload',
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 }
