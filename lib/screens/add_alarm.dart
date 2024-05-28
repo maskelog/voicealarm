@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_voice_alarm/providers/alarm_provider.dart';
-
+import 'package:flutter_voice_alarm/utils/permission_handler.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -25,10 +25,14 @@ class _AddAlarmState extends State<AddAlarm> {
   String? name = "none";
   int? milliseconds;
 
+  final PermissionHandler _permissionHandler = PermissionHandler();
+
   @override
   void initState() {
     controller = TextEditingController();
-    context.read<AlarmProvider>().getData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AlarmProvider>(context, listen: false).getData();
+    });
     super.initState();
   }
 
@@ -57,70 +61,82 @@ class _AddAlarmState extends State<AddAlarm> {
             height: MediaQuery.of(context).size.height * 0.3,
             width: MediaQuery.of(context).size.width,
             child: Center(
-                child: CupertinoDatePicker(
-              showDayOfWeek: true,
-              minimumDate: DateTime.now(),
-              dateOrder: DatePickerDateOrder.dmy,
-              onDateTimeChanged: (va) {
-                dateTime = DateFormat().add_jms().format(va);
-
-                milliseconds = va.microsecondsSinceEpoch;
-
-                notificationTime = va;
-
-                print(dateTime);
-              },
-            )),
+              child: CupertinoDatePicker(
+                showDayOfWeek: true,
+                minimumDate: DateTime.now(),
+                dateOrder: DatePickerDateOrder.dmy,
+                onDateTimeChanged: (va) {
+                  setState(() {
+                    dateTime = DateFormat().add_jms().format(va);
+                    milliseconds = va.millisecondsSinceEpoch;
+                    notificationTime = va;
+                  });
+                },
+              ),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: SizedBox(
-                width: MediaQuery.of(context).size.width,
-                child: CupertinoTextField(
-                  placeholder: "Add Label",
-                  controller: controller,
-                )),
+              width: MediaQuery.of(context).size.width,
+              child: CupertinoTextField(
+                placeholder: "Add Label",
+                controller: controller,
+              ),
+            ),
           ),
           Row(
             children: [
               const Padding(
                 padding: EdgeInsets.all(8.0),
-                child: Text(" Repeat daily"),
+                child: Text("Repeat daily"),
               ),
               CupertinoSwitch(
                 value: repeat,
                 onChanged: (bool value) {
-                  repeat = value;
-
-                  if (repeat == false) {
-                    name = "none";
-                  } else {
-                    name = "Everyday";
-                  }
-
-                  setState(() {});
+                  setState(() {
+                    repeat = value;
+                    name = repeat ? "Everyday" : "none";
+                  });
                 },
               ),
             ],
           ),
           ElevatedButton(
-              onPressed: () {
-                Random random = Random();
-                int randomNumber = random.nextInt(100);
-
-                context.read<AlarmProvider>().setAlarm(controller.text,
-                    dateTime!, true, name!, randomNumber, milliseconds!);
-                context.read<AlarmProvider>().setData();
-
-                context
-                    .read<AlarmProvider>()
-                    .scheduleNotification(notificationTime!, randomNumber);
-
-                Navigator.pop(context);
-              },
-              child: const Text("Set Alarm")),
+            onPressed: _handleSaveAlarm,
+            child: const Text("Set Alarm"),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _handleSaveAlarm() async {
+    bool permissionGranted = await _permissionHandler.requestAlarmPermission();
+
+    if (permissionGranted) {
+      _saveAlarm();
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('알람 설정 권한이 필요합니다. 설정에서 권한을 허용해주세요.'),
+        ),
+      );
+    }
+  }
+
+  void _saveAlarm() {
+    Random random = Random();
+    int randomNumber = random.nextInt(100);
+
+    final alarmProvider = Provider.of<AlarmProvider>(context, listen: false);
+
+    alarmProvider.setAlarm(
+        controller.text, dateTime!, true, name!, randomNumber, milliseconds!);
+    alarmProvider.setData();
+    alarmProvider.scheduleNotification(notificationTime!, randomNumber);
+
+    Navigator.pop(context);
   }
 }

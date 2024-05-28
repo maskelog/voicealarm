@@ -33,15 +33,22 @@ class AlarmHelper {
       android: androidPlatformChannelSpecifics,
     );
 
+    // 32비트 정수 범위 내의 알람 ID 생성
+    final int alarmId = alarmModel.id % 0x7FFFFFFF;
+
     await _notificationsPlugin.zonedSchedule(
-      alarmModel.id,
+      alarmId,
       alarmModel.label,
       '알람이 울립니다',
       tzDateTime,
       platformChannelSpecifics,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exact,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
     );
+  }
+
+  static Future<void> cancelAlarm(int alarmId) async {
+    await _notificationsPlugin.cancel(alarmId % 0x7FFFFFFF);
   }
 }

@@ -2,8 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_voice_alarm/models/model.dart';
 import 'package:flutter_voice_alarm/utils/alarm_helper.dart';
 
-class AlarmListScreen extends StatelessWidget {
+class AlarmListScreen extends StatefulWidget {
   const AlarmListScreen({super.key});
+
+  @override
+  _AlarmListScreenState createState() => _AlarmListScreenState();
+}
+
+class _AlarmListScreenState extends State<AlarmListScreen> {
+  List<Model> alarmList = [];
 
   @override
   Widget build(BuildContext context) {
@@ -11,16 +18,19 @@ class AlarmListScreen extends StatelessWidget {
       children: [
         Expanded(
           child: ListView.builder(
-            itemCount: 5, // 여기서는 예시로 5개의 알람을 표시합니다.
+            itemCount: alarmList.length,
             itemBuilder: (context, index) {
               return Card(
                 child: ListTile(
-                  title: Text('알람 ${index + 1}'),
-                  subtitle: const Text('07:00 AM'), // 여기에 실제 알람 시간을 넣습니다.
+                  title: Text(alarmList[index].label),
+                  subtitle: Text(alarmList[index].when),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete),
                     onPressed: () {
-                      // 알람 삭제 로직을 여기에 추가합니다.
+                      _deleteAlarm(alarmList[index].id);
+                      setState(() {
+                        alarmList.removeAt(index);
+                      });
                     },
                   ),
                 ),
@@ -38,7 +48,7 @@ class AlarmListScreen extends StatelessWidget {
               );
 
               if (picked != null) {
-                _scheduleAlarm(context, picked);
+                await _scheduleAlarm(context, picked);
               }
             },
             child: const Text('알람 추가'),
@@ -68,5 +78,12 @@ class AlarmListScreen extends StatelessWidget {
     );
 
     await AlarmHelper.scheduleAlarm(alarmModel);
+    setState(() {
+      alarmList.add(alarmModel);
+    });
+  }
+
+  void _deleteAlarm(int id) async {
+    await AlarmHelper.cancelAlarm(id);
   }
 }

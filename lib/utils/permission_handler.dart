@@ -8,11 +8,7 @@ class PermissionHandler {
       return true;
     } else {
       status = await Permission.location.request();
-      if (status.isGranted) {
-        return true;
-      } else {
-        return false;
-      }
+      return status.isGranted;
     }
   }
 
@@ -23,11 +19,7 @@ class PermissionHandler {
       return true;
     } else {
       status = await Permission.scheduleExactAlarm.request();
-      if (status.isGranted) {
-        return true;
-      } else {
-        return false;
-      }
+      return status.isGranted;
     }
   }
 
