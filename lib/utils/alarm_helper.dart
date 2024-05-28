@@ -9,24 +9,29 @@ class AlarmHelper {
   static Future<void> initialize() async {
     const InitializationSettings initializationSettings =
         InitializationSettings(
-      android: AndroidInitializationSettings('app_icon'), // 앱 아이콘 설정
+      android: AndroidInitializationSettings('app_icon'),
     );
 
     await _notificationsPlugin.initialize(initializationSettings);
   }
 
   static Future<void> scheduleAlarm(Model alarmModel) async {
-    final DateTime dateTime =
+    DateTime dateTime =
         DateTime.fromMillisecondsSinceEpoch(alarmModel.milliseconds);
-    final tz.TZDateTime tzDateTime = tz.TZDateTime.from(dateTime, tz.local);
+    tz.TZDateTime tzDateTime = tz.TZDateTime.from(dateTime, tz.local);
+
+    // 현재 시간보다 알람 시간이 이전이라면, 알람을 다음 날로 설정
+    if (tzDateTime.isBefore(DateTime.now())) {
+      tzDateTime = tzDateTime.add(const Duration(days: 1));
+    }
 
     const androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      'alarm_channel', // channel id
-      '알람', // channel name
-      channelDescription: '알람을 위한 채널', // channel description
+      'alarm_channel',
+      '알람',
+      channelDescription: '알람을 위한 채널',
       importance: Importance.max,
       priority: Priority.high,
-      icon: 'app_icon', // 알람 아이콘 설정
+      icon: 'app_icon',
     );
 
     const platformChannelSpecifics = NotificationDetails(
