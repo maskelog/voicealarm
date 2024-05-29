@@ -24,8 +24,8 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.example.flutter_voice_alarm"
-    compileSdkVersion 34
-    ndkVersion flutter.ndkVersion
+    compileSdk = 33
+    ndkVersion = '23.1.7779620'
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8

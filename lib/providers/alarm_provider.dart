@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_voice_alarm/main.dart';
-import 'package:flutter_voice_alarm/models/alarm.dart';
 import 'package:flutter_voice_alarm/models/model.dart';
 import 'package:flutter_voice_alarm/screens/full_screen_alarm.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,38 +19,18 @@ class AlarmProvider extends ChangeNotifier {
 
   late BuildContext context;
 
-  void setAlarm(String label, String dateTime, bool check, String repeat,
-      int id, int milliseconds) {
-    alarmList.add(Model(
-        label: label,
-        dateTime: dateTime,
-        check: check,
-        when: repeat,
-        id: id,
-        milliseconds: milliseconds));
+  void setAlarm(Model alarm) {
+    alarmList.add(alarm);
     setData();
   }
 
-  void editSwitch(int index, bool check) {
-    alarmList[index].check = check;
-    setData();
-  }
-
-  void updateAlarm(int index, Alarm alarm) {
-    String formattedTime =
-        "${alarm.time.hour.toString().padLeft(2, '0')}:${alarm.time.minute.toString().padLeft(2, '0')}";
-    alarmList[index] = Model(
-      label: alarm.title,
-      dateTime: formattedTime,
-      check: true,
-      when: alarm.repeatDays.every((day) => day) ? "Everyday" : "none",
-      id: alarm.id,
-      milliseconds: DateTime.now().millisecondsSinceEpoch,
-    );
+  void updateAlarm(int index, Model alarm) {
+    alarmList[index] = alarm;
     setData();
   }
 
   void removeAlarm(int index) {
+    cancelNotification(alarmList[index].id);
     alarmList.removeAt(index);
     setData();
   }
@@ -161,16 +140,10 @@ class AlarmProvider extends ChangeNotifier {
         FlutterLocalNotificationsPlugin();
 
     await flutterLocalNotificationsPlugin.show(
-      0,
-      'Alarm',
-      'It\'s time!',
-      platformChannelSpecifics,
-      payload: 'Alarm payload',
-    );
+        0, 'Alarm', 'It\'s time!', platformChannelSpecifics,
+        payload: 'Alarm payload');
 
     WidgetsFlutterBinding.ensureInitialized();
-    runApp(const MaterialApp(
-      home: FullScreenAlarmScreen(),
-    ));
+    runApp(const MaterialApp(home: FullScreenAlarmScreen()));
   }
 }

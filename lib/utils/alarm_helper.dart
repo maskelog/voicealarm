@@ -47,7 +47,7 @@ class AlarmHelper {
       '알람이 울립니다',
       tzDateTime,
       platformChannelSpecifics,
-      androidScheduleMode: AndroidScheduleMode.exact,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
     );

@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_voice_alarm/models/model.dart';
 import 'package:flutter_voice_alarm/providers/alarm_provider.dart';
 import 'package:flutter_voice_alarm/utils/permission_handler.dart';
 import 'package:intl/intl.dart';
@@ -132,8 +133,16 @@ class _AddAlarmState extends State<AddAlarm> {
 
     final alarmProvider = Provider.of<AlarmProvider>(context, listen: false);
 
-    alarmProvider.setAlarm(
-        controller.text, dateTime!, true, name!, randomNumber, milliseconds!);
+    final alarm = Model(
+      label: controller.text,
+      dateTime: dateTime!,
+      check: true,
+      when: name!,
+      id: randomNumber,
+      milliseconds: milliseconds!,
+    );
+
+    alarmProvider.setAlarm(alarm);
     alarmProvider.setData();
     alarmProvider.scheduleNotification(notificationTime!, randomNumber);
 

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_voice_alarm/providers/alarm_provider.dart';
+import 'package:flutter_voice_alarm/models/model.dart';
 import 'package:provider/provider.dart';
 import '../models/alarm.dart';
+import '../providers/alarm_provider.dart';
 
 class AlarmScreen extends StatefulWidget {
   final Alarm? alarm;
@@ -96,11 +97,11 @@ class AlarmScreenState extends State<AlarmScreen> {
     );
 
     final alarmProvider = Provider.of<AlarmProvider>(context, listen: false);
+    Model model = newAlarm.toModel();
     if (widget.index == null) {
-      alarmProvider.setAlarm(newAlarm.title, newAlarm.time.format(context),
-          true, 'Everyday', newAlarm.id, DateTime.now().millisecondsSinceEpoch);
+      alarmProvider.setAlarm(model);
     } else {
-      alarmProvider.updateAlarm(widget.index!, newAlarm);
+      alarmProvider.updateAlarm(widget.index!, model);
     }
 
     Navigator.pop(context);

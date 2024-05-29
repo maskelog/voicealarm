@@ -1,64 +1,74 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_voice_alarm/models/model.dart';
 import 'package:flutter_voice_alarm/utils/alarm_helper.dart';
+import 'package:provider/provider.dart';
+import '../providers/alarm_provider.dart';
 
 class AlarmListScreen extends StatefulWidget {
   const AlarmListScreen({super.key});
 
   @override
-  _AlarmListScreenState createState() => _AlarmListScreenState();
+  AlarmListScreenState createState() => AlarmListScreenState();
 }
 
-class _AlarmListScreenState extends State<AlarmListScreen> {
-  List<Model> alarmList = [];
+class AlarmListScreenState extends State<AlarmListScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AlarmProvider>(context, listen: false).getData();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            itemCount: alarmList.length,
-            itemBuilder: (context, index) {
-              return Card(
-                child: ListTile(
-                  title: Text(alarmList[index].label),
-                  subtitle: Text(alarmList[index].when),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete),
-                    onPressed: () {
-                      _deleteAlarm(alarmList[index].id);
-                      setState(() {
-                        alarmList.removeAt(index);
-                      });
-                    },
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: ElevatedButton(
-            onPressed: () async {
-              TimeOfDay? picked = await showTimePicker(
-                context: context,
-                initialTime: TimeOfDay.now(),
-              );
+    return Consumer<AlarmProvider>(
+      builder: (context, alarmProvider, child) {
+        return Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                itemCount: alarmProvider.alarmList.length,
+                itemBuilder: (context, index) {
+                  final alarm = alarmProvider.alarmList[index];
+                  return Card(
+                    child: ListTile(
+                      title: Text(alarm.label),
+                      subtitle: Text(alarm.when),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () {
+                          alarmProvider.removeAlarm(index);
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: ElevatedButton(
+                onPressed: () async {
+                  TimeOfDay? picked = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
 
-              if (picked != null) {
-                await _scheduleAlarm(context, picked);
-              }
-            },
-            child: const Text('알람 추가'),
-          ),
-        ),
-      ],
+                  if (picked != null) {
+                    await _scheduleAlarm(picked);
+                  }
+                },
+                child: const Text('알람 추가'),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Future<void> _scheduleAlarm(BuildContext context, TimeOfDay picked) async {
+  Future<void> _scheduleAlarm(TimeOfDay picked) async {
     DateTime now = DateTime.now();
     DateTime dateTime = DateTime(
       now.year,
@@ -67,6 +77,11 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
       picked.hour,
       picked.minute,
     );
+
+    // Ensure the datetime is in the future
+    if (dateTime.isBefore(now)) {
+      dateTime = dateTime.add(const Duration(days: 1));
+    }
 
     final alarmModel = Model(
       label: '알람',
@@ -79,11 +94,9 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
 
     await AlarmHelper.scheduleAlarm(alarmModel);
     setState(() {
-      alarmList.add(alarmModel);
+      Provider.of<AlarmProvider>(context, listen: false)
+          .alarmList
+          .add(alarmModel);
     });
-  }
-
-  void _deleteAlarm(int id) async {
-    await AlarmHelper.cancelAlarm(id);
   }
 }
